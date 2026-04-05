@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Crypto Insight{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/chat_widget.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% block head %}{% endblock %}
+</head>
+<body class="app-shell">
+    <nav class="app-nav glass-panel">
+        <div class="nav-left">
+            <a class="brand" href="/">
+                <span class="brand-mark"></span>
+                <span class="brand-name">Crypto Insight</span>
+            </a>
+            <div class="nav-links">
+                <a class="nav-item {% if request.url.path == '/' %}active{% endif %}" href="/">仪表盘</a>
+                <a class="nav-item {% if request.url.path.startswith('/search') %}active{% endif %}" href="/search">新闻情报</a>
+                <a class="nav-item {% if request.url.path == '/analyzer' %}active{% endif %}" href="/analyzer">关键词分析</a>
+            </div>
+        </div>
+        <div class="nav-right">
+            <form id="global-search-form" class="search-form-mini" action="#" onsubmit="return false;">
+                <input id="global-search-input" class="search-input-mini" type="text" placeholder="输入币种或关键词，例如 BTC / RWA" aria-label="全局关键词搜索" />
+                <select id="global-search-source" class="search-select-mini" aria-label="数据源">
+                    <option value="crypto" selected>Crypto</option>
+                    <option value="hkstocks">HK Stocks</option>
+                </select>
+                <button id="global-search-btn" class="mini-link" type="submit">查询</button>
+            </form>
+            <span class="nav-badge">Beta</span>
+        </div>
+    </nav>
+    <main class="app-main">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="app-footer">
+        <span>© 2025 Crypto Insight · 市场情报工作台</span>
+        <span class="footer-links">
+            <a href="/analyzer">工作流指南</a>
+            <a href="https://www.alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener">情绪指数来源</a>
+        </span>
+    </footer>
+    <script>
+    (function(){
+        const form = document.getElementById('global-search-form');
+        const input = document.getElementById('global-search-input');
+        const sourceSel = document.getElementById('global-search-source');
+        if(!form || !input || !sourceSel){ return; }
+
+        const showSuggestions = (items) => {
+            let panel = document.getElementById('global-suggest-panel');
+            if(!panel){
+                panel = document.createElement('div');
+                panel.id = 'global-suggest-panel';
+                panel.className = 'glass-panel compact suggest-panel';
+                // 插入到导航下方
+                const main = document.querySelector('.app-main');
+                if(main){
+                    main.insertAdjacentElement('afterbegin', panel);
+                }
+            }
+            panel.innerHTML = '';
+            const title = document.createElement('div');
+            title.className = 'suggest-title';
+            title.textContent = '未找到精确匹配，建议如下：';
+            panel.appendChild(title);
+            const list = document.createElement('div');
+            list.className = 'suggest-list';
+            (items || []).slice(0, 10).forEach(it => {
+                const btn = document.createElement('button');
+                btn.className = 'mini-link';
+                btn.textContent = it.word || it.label || '—';
+                btn.onclick = () => {
+                    const src = sourceSel.value || 'crypto';
+                    window.location.href = `/search?source=${encodeURIComponent(src)}&keyword=${encodeURIComponent(btn.textContent)}`;
+                };
+                list.appendChild(btn);
+            });
+            panel.appendChild(list);
+        };
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const keyword = (input.value || '').trim();
+            const source = sourceSel.value || 'crypto';
+            if(!keyword){ return; }
+            try{
+                const resp = await fetch('/api/query-keyword', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data_source: source, keyword })
+                });
+                if(!resp.ok){ throw new Error('query-keyword failed'); }
+                const data = await resp.json();
+                if(data && data.exists){
+                    window.location.href = `/search?source=${encodeURIComponent(source)}&keyword=${encodeURIComponent(keyword)}`;
+                    return;
+                }
+                const similar = (data && data.similar_words) || [];
+                showSuggestions(similar);
+            } catch(err){
+                console.error('Global search failed', err);
+            }
+        });
+    })();
+    </script>
+    {% block scripts %}{% endblock %}
+
+    <!-- Chat Widget -->
+    {% include 'components/chat_widget.html' %}
+    <script src="{{ url_for('static', path='/chat_widget.js') }}"></script>
+</body>
+</html>

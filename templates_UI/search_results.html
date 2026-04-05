@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}{{ source_label }} · {{ keyword_heading or '新闻搜索' }}{% endblock %}
+
+{% block content %}
+<section class="search-hero glass-panel">
+    <div>
+        <p class="hero-kicker">{{ source_label }}</p>
+        <h1>{{ keyword_heading or '新闻搜索' }}</h1>
+        <p class="hero-subtitle">{{ result_summary or ('共 ' ~ total_results ~ ' 条结果') }}</p>
+    </div>
+    <form class="search-form" method="get" action="/search">
+        <input type="text" class="search-input" name="keyword" value="{{ search_value or '' }}" placeholder="输入想追踪的关键词">
+        <select name="source" class="search-select">
+            {% for opt in available_sources %}
+                <option value="{{ opt.key }}" {% if opt.key == source %}selected{% endif %}>{{ opt.label }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-primary" type="submit">更新视图</button>
+        <button id="generate-report-btn" class="btn btn-secondary" type="button">生成新闻分析</button>
+    </form>
+</section>
+
+<section id="report-section" class="report-section glass-panel" style="display:none;">
+    <div class="section-header">
+        <h2>📝 新闻分析报告</h2>
+        <small id="report-status">准备就绪</small>
+    </div>
+    <div id="report-body" class="report-body"></div>
+</section>
+
+<section class="search-layout">
+    <main>
+        <div class="keyword-row">
+            <h2>🔥 高频关键词</h2>
+            <div class="keyword-chips">
+                {% if top_keywords_counts %}
+                    {% for item in top_keywords_counts %}
+                        <a class="chip" href="/search?keyword={{ item.keyword }}&source={{ source }}">
+                            <span>{{ item.keyword }}</span>
+                            <small>{{ item.count }}</small>
+                        </a>
+                    {% endfor %}
+                {% else %}
+                    <span class="chip muted">暂无关键词</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="news-stream">
+            {% if results %}
+                {% for news in results %}
+                    <article class="news-card glass-panel">
+                        <header class="news-meta">
+                            <span class="badge">{{ news.source_badge }}</span>
+                            <span class="badge outline">{{ news.source }}</span>
+                            <span class="timestamp">{{ news.date }}</span>
+                            {% if news.similarity_score %}
+                                <span class="badge accent">相关度 {{ '{:.2f}'.format(news.similarity_score) }}</span>
+                            {% endif %}
+                        </header>
+                        <h3>{{ news.title }}</h3>
+                        <p class="summary">{{ news.summary or '暂无摘要' }}</p>
+                        <details>
+                            <summary>展开原文</summary>
+                            <p class="original">{{ news.original_text }}</p>
+                        </details>
+                        <div class="news-actions">
+                            {% if news.url %}<a href="{{ news.url }}" target="_blank" rel="noopener" class="mini-link">原文 ↗</a>{% endif %}
+                            {% if news.keyword_list %}
+                                {% for kw in news.keyword_list %}
+                                    <a href="/search?source={{ source }}&keyword={{ kw }}" class="mini-link">{{ kw }}</a>
+                                {% endfor %}
+                            {% endif %}
+                            {% if news.trading_symbol %}
+                                <a href="https://www.tradingview.com/chart/?symbol={{ news.trading_symbol }}" target="_blank" rel="noopener" class="mini-link">TradingView</a>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% endfor %}
+            {% else %}
+                <div class="empty-card glass-panel">没有找到相关新闻，可以尝试更换关键词或切换数据源。</div>
+            {% endif %}
+        </div>
+    </main>
+    <aside>
+        <div class="glass-panel side-card">
+            <div class="card-header">
+                <span>📈 TradingView 实时图</span>
+                <small>默认展示首个匹配交易对</small>
+            </div>
+            <div id="tradingview_container" class="tradingview-frame">
+                {% if trading_symbol %}
+                    <div id="tradingview_widget"></div>
+                {% else %}
+                    <p class="empty">暂无可匹配的交易对</p>
+                {% endif %}
+            </div>
+            {% if related_symbols %}
+                <div class="related-symbols">
+                    <p>相关交易对</p>
+                    <ul>
+                        {% for item in related_symbols[:6] %}
+                            <li><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.symbol }}</a><span>{{ item.label }}</span></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="glass-panel side-card">
+            <div class="card-header">
+                <span>📊 热度趋势</span>
+                <small>日粒度</small>
+            </div>
+            <canvas id="trendChart" height="220"></canvas>
+        </div>
+    </aside>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% if trading_symbol %}
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+    new TradingView.widget({
+        container_id: "tradingview_widget",
+        symbol: "{{ trading_symbol }}",
+        interval: "30",
+        timezone: "Etc/UTC",
+        theme: "dark",
+        style: "1",
+        locale: "zh_CN",
+        toolbar_bg: "rgba(17,24,39,0.6)",
+        hide_side_toolbar: false,
+        allow_symbol_change: true,
+        height: 420
+    });
+</script>
+{% endif %}
+<script>
+    const labels = JSON.parse('{{ trend_labels | safe }}');
+    const counts = JSON.parse('{{ trend_counts | safe }}');
+    if (labels.length && counts.length) {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '日度热度',
+                    data: counts,
+                    borderColor: '#63b3ff',
+                    backgroundColor: 'rgba(99, 179, 255, 0.15)',
+                    tension: 0.35,
+                    pointRadius: 2,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#A0AEC0', autoSkip: true, maxRotation: 0 }, grid: { color: 'rgba(160, 174, 192, 0.15)' } },
+                    y: { beginAtZero: true, ticks: { color: '#A0AEC0' }, grid: { color: 'rgba(160, 174, 192, 0.15)' } }
+                }
+            }
+        });
+    }
+
+    // MVP: 生成新闻分析报告
+    (function(){
+        const btn = document.getElementById('generate-report-btn');
+        if(!btn) return;
+        const source = '{{ source }}';
+        const reportSection = document.getElementById('report-section');
+        const reportBody = document.getElementById('report-body');
+        const reportStatus = document.getElementById('report-status');
+
+        const collectTopContext = () => {
+            const articles = Array.from(document.querySelectorAll('.news-card')).slice(0, 10);
+            const blocks = articles.map((card, idx) => {
+                const title = (card.querySelector('h3')?.textContent || '').trim();
+                const original = (card.querySelector('.original')?.textContent || '').trim();
+                const kwLinks = Array.from(card.querySelectorAll('.news-actions a.mini-link')).map(a => a.textContent).filter(t => t && t !== '原文 ↗' && t !== 'TradingView');
+                const keywords = kwLinks.join(',');
+                return `#${idx+1} 标题: ${title}\n关键词: ${keywords || '无'}\n原文: ${original || '无'}\n`;
+            });
+            const header = `数据源: ${source}\n检索关键词: {{ search_value or '' }}\n样本数: ${blocks.length}\n`;
+            return header + blocks.join('\n');
+        };
+
+        const setReportVisibility = (visible) => {
+            if(reportSection){
+                reportSection.style.display = visible ? '' : 'none';
+            }
+        };
+
+        const escapeHtml = (str = '') => str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const formatReport = (raw = '') => {
+            const tokens = raw.split(/\n+/);
+            const blocks = [];
+            let listBuffer = [];
+            const flushList = () => {
+                if (!listBuffer.length) return;
+                const items = listBuffer.map(item => `<li>${item}</li>`).join('');
+                blocks.push(`<ul>${items}</ul>`);
+                listBuffer = [];
+            };
+            tokens.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) {
+                    flushList();
+                    return;
+                }
+                if (/^[*-]\s+/.test(trimmed)) {
+                    const content = trimmed.replace(/^[*-]\s+/, '');
+                    listBuffer.push(escapeHtml(content));
+                    return;
+                }
+                flushList();
+                if (/^###\s+/.test(trimmed)) {
+                    blocks.push(`<h3>${escapeHtml(trimmed.replace(/^###\s+/, ''))}</h3>`);
+                } else if (/^##\s+/.test(trimmed)) {
+                    blocks.push(`<h2>${escapeHtml(trimmed.replace(/^##\s+/, ''))}</h2>`);
+                } else if (/^#\s+/.test(trimmed)) {
+                    blocks.push(`<h1>${escapeHtml(trimmed.replace(/^#\s+/, ''))}</h1>`);
+                } else {
+                    const withBold = escapeHtml(trimmed).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                    blocks.push(`<p>${withBold}</p>`);
+                }
+            });
+            flushList();
+            return blocks.join('\n');
+        };
+
+        const renderReport = (text, statusText) => {
+            if(!reportSection || !reportBody) return;
+            setReportVisibility(true);
+            if(reportBody){
+                reportBody.innerHTML = formatReport(text || '暂无内容');
+            }
+            if(reportStatus && statusText){
+                reportStatus.textContent = statusText;
+            }
+        };
+
+        btn.addEventListener('click', async () => {
+            try{
+                const context = collectTopContext();
+                renderReport('正在生成报告，请稍候…', '生成中');
+                const resp = await fetch('/api/generate-report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source, context })
+                });
+                if(!resp.ok){ throw new Error('生成报告接口失败'); }
+                const data = await resp.json();
+                const text = data?.report || data?.outputs?.report || JSON.stringify(data);
+                renderReport(text, '已生成');
+            }catch(err){
+                console.error(err);
+                renderReport('生成失败，请稍后重试。', '失败');
+            }
+        });
+    })();
+</script>
+{% endblock %}

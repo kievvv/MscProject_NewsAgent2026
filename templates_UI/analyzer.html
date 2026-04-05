@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}关键词统计与查询{% endblock %}
+
+{% block content %}
+<div class="analyzer-shell">
+    <header class="glass-panel analyzer-header">
+        <div>
+            <p class="hero-kicker">Alpha Workflow</p>
+            <h1>关键词雷达 · 多源融合分析</h1>
+            <p class="hero-subtitle">挑选热点 → 验证情报 → 捕捉补涨机会。支持 Crypto / 港股双市场。</p>
+        </div>
+        <div class="header-actions">
+            <button id="analyze-btn" class="btn btn-primary">🚀 立即分析</button>
+            <div id="loading" class="loading" style="display: none;">
+                <span class="spinner"></span>
+            </div>
+        </div>
+    </header>
+
+    <section class="glass-panel control-panel">
+        <div class="control-group">
+            <label for="data-source">数据源</label>
+            <select id="data-source">
+                <option value="crypto" selected>Web3 频道</option>
+                <option value="hkstocks">港股新闻</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="time-range">时间范围</label>
+            <select id="time-range">
+                <option value="">不限制</option>
+                <option value="5">最近5分钟</option>
+                <option value="15">最近15分钟</option>
+                <option value="30">最近30分钟</option>
+                <option value="60">最近1小时</option>
+                <option value="720">最近12小时</option>
+                <option value="1440">最近24小时</option>
+                <option value="10080">最近7天</option>
+                <option value="43200">最近30天</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>频道筛选</label>
+            <div class="channels-collapse-wrapper">
+                <button id="channels-toggle" class="collapse-toggle">展开频道 <span class="toggle-icon">▼</span></button>
+                <div id="channels-collapse-content" class="collapse-content" style="display:none;">
+                    <div id="channels-container" class="checkbox-group"></div>
+                </div>
+            </div>
+        </div>
+        <div class="control-hint">
+            <p>提示：建议先选择 24h / 7d，全局扫描热点，再缩小到 60min 验证即时强度。</p>
+        </div>
+    </section>
+
+    <section class="workflow-playbook">
+        <article class="play-card glass-panel">
+            <h3>🎯 工作流指南</h3>
+            <ol>
+                <li>点击「分析」获取全量关键词分布</li>
+                <li>热点关键词 ➜ 🔍 查看新闻 ➜ 确认事件</li>
+                <li>点击关键词 🔗 自动跳转相似词，寻找补涨</li>
+                <li>点击币种 → TradingView，做好交易演示</li>
+            </ol>
+        </article>
+        <article class="play-card glass-panel">
+            <h3>📌 Demo 建议</h3>
+            <ul>
+                <li>使用「最近24小时」呈现叙事雏形</li>
+                <li>切换「最近60分钟」展示热度放大</li>
+                <li>展示「Alpha Ideas」模块输出的策略</li>
+            </ul>
+        </article>
+    </section>
+
+    <section class="glass-panel results-panel" id="results-panel" style="display:none;">
+        <div class="stats-overview">
+            <div class="stat-card">
+                <span>📰 总消息数</span>
+                <p id="total-rows">-</p>
+            </div>
+            <div class="stat-card">
+                <span>🏷️ 关键词种类</span>
+                <p id="keyword-total">-</p>
+            </div>
+            <div class="stat-card">
+                <span>💰 币种种类</span>
+                <p id="currency-total">-</p>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="keywords">关键词统计</button>
+            <button class="tab-btn" data-tab="currencies">币种统计</button>
+            <button class="tab-btn" data-tab="similarity">相似度分析</button>
+            <button class="tab-btn" data-tab="query">关键词查询</button>
+        </div>
+
+        <div class="alpha-ideas" id="alpha-ideas" style="display:none;"></div>
+
+        <div class="tab-content active" id="keywords-tab">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>关键词</th>
+                            <th>出现次数</th>
+                            <th>出现行数</th>
+                            <th>占比(%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keywords-tbody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="keywords-pagination">
+                <button id="keywords-prev" class="pagination-btn">← 上一页</button>
+                <span id="keywords-page-info" class="page-info">第 1 页</span>
+                <button id="keywords-next" class="pagination-btn">下一页 →</button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="currencies-tab">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>币种/标的</th>
+                            <th>出现次数</th>
+                            <th>出现行数</th>
+                            <th>占比(%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="currencies-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-content" id="similarity-tab">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>关键词1</th>
+                            <th>出现次数</th>
+                            <th>关键词2</th>
+                            <th>出现次数</th>
+                            <th>相似度</th>
+                        </tr>
+                    </thead>
+                    <tbody id="similarity-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-content" id="query-tab">
+            <div class="query-section">
+                <div class="query-input-group">
+                    <input type="text" id="query-keyword" placeholder="输入你感兴趣的关键词..." class="query-input">
+                    <button id="query-btn" class="btn btn-secondary">🔎 查询</button>
+                </div>
+                <div id="query-result" class="query-result" style="display:none;">
+                    <div id="query-status"></div>
+                    <div id="query-similar" class="similar-words-cards"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', path='/app.js') }}"></script>
+{% endblock %}

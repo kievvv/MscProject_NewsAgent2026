@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}AI助手 - Crypto Insight{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', path='/chat.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+    <!-- Sidebar -->
+    <aside class="chat-sidebar glass-panel">
+        <div class="sidebar-header">
+            <h2>对话历史</h2>
+            <button id="new-chat-btn" class="btn-primary" title="新建对话">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                新对话
+            </button>
+        </div>
+
+        <div id="conversation-list" class="conversation-list">
+            <!-- 对话列表将动态加载 -->
+            <div class="conversation-item-placeholder">
+                <p>暂无对话历史</p>
+                <p class="text-muted">开始新对话来使用AI助手</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <div class="chat-main">
+        <!-- Chat Header -->
+        <div class="chat-header glass-panel">
+            <div class="chat-header-info">
+                <h1 id="chat-title">AI 交易助手</h1>
+                <p class="chat-subtitle">支持新闻搜索、趋势分析、Alpha挖掘</p>
+            </div>
+            <div class="chat-header-actions">
+                <button id="clear-chat-btn" class="btn-secondary" title="清空当前对话">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    清空
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages Container -->
+        <div id="chat-messages" class="chat-messages">
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="welcome-screen">
+                <div class="welcome-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                    </svg>
+                </div>
+                <h2>欢迎使用 AI 交易助手</h2>
+                <p>我可以帮你分析市场、搜索新闻、挖掘机会</p>
+
+                <div class="welcome-skills">
+                    <h3>快速开始</h3>
+                    <div class="skill-cards">
+                        <button class="skill-card" data-skill="DailyBriefing">
+                            <div class="skill-icon">📊</div>
+                            <h4>每日简报</h4>
+                            <p>市场概览 + 热门新闻</p>
+                        </button>
+                        <button class="skill-card" data-skill="DeepDive">
+                            <div class="skill-icon">🔍</div>
+                            <h4>深度分析</h4>
+                            <p>话题深度挖掘</p>
+                        </button>
+                        <button class="skill-card" data-skill="AlphaHunter">
+                            <div class="skill-icon">🎯</div>
+                            <h4>Alpha挖掘</h4>
+                            <p>发现潜在机会</p>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="welcome-examples">
+                    <h3>或者问我</h3>
+                    <div class="example-queries">
+                        <button class="example-query">最近有什么热门新闻？</button>
+                        <button class="example-query">比特币的趋势如何？</button>
+                        <button class="example-query">帮我分析 DeFi 板块</button>
+                        <button class="example-query">当前市场情绪怎么样？</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages will be inserted here -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-area glass-panel">
+            <textarea
+                id="chat-input"
+                class="chat-input"
+                placeholder="输入消息...按Enter发送，Shift+Enter换行"
+                rows="1"
+            ></textarea>
+            <button id="send-btn" class="send-btn" title="发送">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='/chat.js') }}"></script>
+{% endblock %}
