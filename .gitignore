@@ -1,0 +1,75 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python cache / build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Test / lint / type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Package/tool caches
+.uv-cache/
+.cache/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+server.log
+
+# Runtime/session artifacts
+*.session
+*.session-journal
+
+# Databases and local state
+*.db
+*.db-shm
+*.db-wal
+
+# Large local models / Hugging Face cache
+data/models/
+data/hf-home/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS metadata in nested folders
+**/.DS_Store
