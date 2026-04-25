@@ -9,8 +9,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from src.services import get_news_service, get_search_service, get_market_service
+from src.services import get_news_service, get_search_service, get_market_service, get_personalization_service
 from src.core.models import NewsSource
+from src.data.repositories.user_profile import UserProfileRepository
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,29 @@ SOURCE_OPTIONS = [
 SOURCE_LABEL_MAP = {item["key"]: item["label"] for item in SOURCE_OPTIONS}
 DEFAULT_SOURCE = "crypto"
 SOURCE_BADGES = {"crypto": "Web3", "hkstocks": "港股"}
+DEFAULT_HOME_TASKS = [
+    {"task": "discover", "label": "推荐适合我的新闻", "prompt": "推荐适合我的新闻，优先看过去12小时最值得关注的变化"},
+    {"task": "understand", "label": "分析今天市场局势", "prompt": "分析一下今天的市场局势，给我3个最重要的结论"},
+    {"task": "focus", "label": "只看高波动机会", "prompt": "帮我筛出过去6小时更适合短线关注的高波动机会"},
+    {"task": "report", "label": "生成个性化简报", "prompt": "生成一份适合我的个性化市场简报"},
+]
+
+
+def build_recommendations_snapshot(user_id: str = "web_user", limit: int = 4) -> Dict[str, Any]:
+    personalization_service = get_personalization_service()
+    user_profile_repo = UserProfileRepository()
+    profile = user_profile_repo.get_or_create(user_id)
+    recommended_news, recommendation_status = personalization_service.recommend_news_with_status(
+        preferences=profile.preferences,
+        limit=limit,
+        source=NewsSource.CRYPTO,
+    )
+    _enhance_news_results(recommended_news)
+    return {
+        "success": True,
+        "recommended_news": recommended_news,
+        "recommendation_status": recommendation_status,
+    }
 
 
 def normalize_source(source: Optional[str]) -> str:
@@ -111,9 +135,14 @@ def _news_to_dict(news) -> Dict[str, Any]:
     }
 
 
-def build_dashboard_snapshot() -> Dict[str, Any]:
+def build_dashboard_snapshot(user_id: str = "web_user") -> Dict[str, Any]:
     """构建仪表板快照"""
     try:
+        personalization_service = get_personalization_service()
+        user_profile_repo = UserProfileRepository()
+        profile = user_profile_repo.get_or_create(user_id)
+        profile_summary = personalization_service.summarize_profile(profile.preferences)
+
         # 获取Crypto统计
         crypto_service = get_news_service(source=NewsSource.CRYPTO, auto_extract_keywords=False)
         crypto_stats = crypto_service.get_statistics()
@@ -168,6 +197,10 @@ def build_dashboard_snapshot() -> Dict[str, Any]:
         crypto_latest_data = [_news_to_dict(news) for news in crypto_latest]
         _enhance_news_results(crypto_latest_data)
 
+        recommendation_snapshot = build_recommendations_snapshot(user_id=user_id, limit=4)
+        recommended_news = recommendation_snapshot["recommended_news"]
+        recommendation_status = recommendation_snapshot["recommendation_status"]
+
         hk_latest_data = [_news_to_dict(news) for news in hk_latest]
         _enhance_news_results(hk_latest_data)
 
@@ -179,7 +212,11 @@ def build_dashboard_snapshot() -> Dict[str, Any]:
             "crypto_trending": crypto_trending,
             "hk_trending": hk_trending,
             "crypto_latest": crypto_latest_data,
+            "recommended_news": recommended_news,
+            "recommendation_status": recommendation_status,
             "hk_latest": hk_latest_data,
+            "profile_summary": profile_summary,
+            "home_tasks": DEFAULT_HOME_TASKS,
             "spotlight_symbols": [],
             "fear_greed": fear_greed,
             "crypto_market_board": crypto_market_board,
@@ -196,7 +233,20 @@ def build_dashboard_snapshot() -> Dict[str, Any]:
             "crypto_trending": [],
             "hk_trending": [],
             "crypto_latest": [],
+            "recommended_news": [],
+            "recommendation_status": {
+                "mode": "empty",
+                "lookback_days": None,
+                "last_refreshed_at": None,
+                "count": 0,
+            },
             "hk_latest": [],
+            "profile_summary": {
+                "summary": "暂未获取到你的画像摘要。",
+                "preferences": {},
+                "profile_initialized": False,
+            },
+            "home_tasks": DEFAULT_HOME_TASKS,
             "spotlight_symbols": [],
             "fear_greed": {
                 "value": None,
@@ -214,9 +264,11 @@ def build_dashboard_snapshot() -> Dict[str, Any]:
 @router.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     """主页"""
-    snapshot = build_dashboard_snapshot()
+    user_id = request.query_params.get("user_id", "web_user")
+    snapshot = build_dashboard_snapshot(user_id=user_id)
     context = {
         "request": request,
+        "user_id": user_id,
         "source_options": SOURCE_OPTIONS,
         "auto_refresh": True,
         "refresh_interval": 60,
@@ -244,7 +296,18 @@ async def analyzer_page(request: Request):
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     """AI聊天页面"""
-    return templates.TemplateResponse("chat.html", {"request": request})
+    user_id = request.query_params.get("user_id", "web_user")
+    conversation_id = request.query_params.get("conversation_id")
+    open_onboarding = request.query_params.get("open_onboarding", "0")
+    return templates.TemplateResponse(
+        "chat.html",
+        {
+            "request": request,
+            "user_id": user_id,
+            "conversation_id": conversation_id,
+            "open_onboarding": open_onboarding,
+        }
+    )
 
 
 @router.get("/search_action", response_class=HTMLResponse)
@@ -344,6 +407,12 @@ async def _search_news_action(
 
 
 @router.get("/api/dashboard")
-async def dashboard_api():
+async def dashboard_api(user_id: str = "web_user"):
     """仪表板API"""
-    return build_dashboard_snapshot()
+    return build_dashboard_snapshot(user_id=user_id)
+
+
+@router.get("/api/recommendations/refresh")
+async def refresh_recommendations_api(user_id: str = "web_user"):
+    """刷新个性化推荐。"""
+    return build_recommendations_snapshot(user_id=user_id, limit=4)

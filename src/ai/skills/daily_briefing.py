@@ -102,11 +102,12 @@ class DailyBriefingSkill(BaseSkill):
 
         # 2. 市场数据
         market_step = steps[1]
-        if market_step.result and market_step.result:
+        market_items = market_step.result.get('coins', []) if isinstance(market_step.result, dict) else (market_step.result or [])
+        if market_items:
             report += "## 💰 Top 10 加密货币\n\n"
             report += "| 排名 | 币种 | 价格 | 24h涨跌 |\n"
             report += "|------|------|------|--------|\n"
-            for i, coin in enumerate(market_step.result[:10], 1):
+            for i, coin in enumerate(market_items[:10], 1):
                 symbol = coin.get('symbol', 'N/A')
                 price = coin.get('current_price', 0)
                 change = coin.get('price_change_24h', 0)
@@ -147,3 +148,33 @@ class DailyBriefingSkill(BaseSkill):
         report += "*本简报由AI自动生成，仅供参考*\n"
 
         return report
+
+    def build_structured_output(self, steps: List[SkillStep], report: str) -> Dict[str, Any]:
+        news_items = steps[2].result if len(steps) > 2 and steps[2].result else []
+        evidence_news_ids = [item.get('id') for item in news_items if item.get('id')]
+        market = steps[1].result if len(steps) > 1 and steps[1].result else {}
+        market_items = market.get('coins', []) if isinstance(market, dict) else (market or [])
+        sentiment = steps[0].result if len(steps) > 0 and steps[0].result else {}
+        trend = steps[3].result if len(steps) > 3 and steps[3].result else {}
+        key_points = []
+        if sentiment:
+            key_points.append(f"市场情绪为 {sentiment.get('classification') or sentiment.get('value_classification', '未知')}")
+        if market_items:
+            key_points.append(f"已纳入 {len(market_items[:10])} 个主流币种的市场快照")
+        if trend:
+            key_points.append(f"关键词 {trend.get('keyword', 'bitcoin')} 近周期出现 {trend.get('total_count', 0)} 次")
+        return {
+            "title": "Market Briefing",
+            "summary": "市场概览、新闻热点与趋势已聚合为一份面向研究决策的简报。",
+            "key_points": key_points,
+            "evidence_news_ids": evidence_news_ids,
+            "risk_notes": ["该简报偏全局市场观察，适合作为后续深挖入口。"],
+            "next_actions": ["继续深挖其中一个主题", "筛出与你画像更相关的新闻"],
+            "tool_trace_refs": [step.tool_name for step in steps if step.tool_name],
+            "sections": {
+                "sentiment": sentiment,
+                "market": market_items,
+                "news": news_items,
+                "trend": trend,
+            }
+        }

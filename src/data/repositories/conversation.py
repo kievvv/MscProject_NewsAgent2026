@@ -143,6 +143,22 @@ class ConversationRepository:
         finally:
             conn.close()
 
+    def update_metadata(self, conversation_id: int, metadata: Dict[str, Any]) -> bool:
+        """更新对话元数据。"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                UPDATE conversations
+                SET metadata = ?, updated_at = ?
+                WHERE id = ?
+            """, (json.dumps(metadata or {}), datetime.now().isoformat(), conversation_id))
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+
     def delete_conversation(self, conversation_id: int) -> bool:
         """删除对话（级联删除消息）"""
         conn = self._get_connection()

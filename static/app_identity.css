@@ -1,0 +1,127 @@
+.onboarding-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.46);
+    backdrop-filter: blur(12px);
+    z-index: 1200;
+}
+
+.onboarding-modal[hidden] {
+    display: none !important;
+}
+
+.onboarding-dialog {
+    width: min(760px, 100%);
+    max-height: 88vh;
+    overflow: auto;
+    border-radius: 24px;
+    background: #f8fafc;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.22);
+    padding: 24px;
+}
+
+.onboarding-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.onboarding-header h3 {
+    margin: 0 0 6px;
+}
+
+.onboarding-header p {
+    margin: 0;
+    color: #475569;
+}
+
+.onboarding-close {
+    border: 0;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.onboarding-questions {
+    display: grid;
+    gap: 18px;
+}
+
+.onboarding-question {
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.onboarding-question h4 {
+    margin: 0 0 12px;
+    font-size: 16px;
+}
+
+.onboarding-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.onboarding-option {
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    background: rgba(99, 102, 241, 0.06);
+    color: #334155;
+    border-radius: 999px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all .18s ease;
+}
+
+.onboarding-option.active {
+    background: rgba(79, 70, 229, 0.14);
+    color: #312e81;
+    border-color: rgba(79, 70, 229, 0.34);
+}
+
+.onboarding-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.onboarding-status {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.profile-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 6px 12px;
+    background: rgba(99, 102, 241, 0.08);
+    color: #4338ca;
+    font-size: 13px;
+}
+
+@media (max-width: 720px) {
+    .onboarding-dialog {
+        padding: 18px;
+        border-radius: 20px;
+    }
+
+    .onboarding-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

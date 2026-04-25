@@ -193,3 +193,35 @@ class DeepDiveSkill(BaseSkill):
         """获取当前时间字符串"""
         from datetime import datetime
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    def build_structured_output(self, steps: List[SkillStep], report: str) -> Dict[str, Any]:
+        topic = steps[0].params.get('keyword', '未知话题') if steps else '未知话题'
+        news_items = steps[0].result if steps and steps[0].result else []
+        evidence_news_ids = [item.get('id') for item in news_items if item.get('id')]
+        trend = steps[2].result if len(steps) > 2 and steps[2].result else {}
+        keywords = steps[1].result if len(steps) > 1 and steps[1].result else []
+        return {
+            "title": f"Theme Deep Dive · {topic}",
+            "summary": f"围绕 {topic} 生成了一份深度分析，包含新闻、关键词、趋势与相关线索。",
+            "key_points": [
+                f"共汇总 {len(news_items)} 条相关新闻",
+                f"提取到 {len(keywords)} 个核心关键词",
+                f"过去周期总出现次数 {trend.get('total_count', 0)}",
+            ],
+            "evidence_news_ids": evidence_news_ids,
+            "risk_notes": [
+                "深度分析适合继续追问事件影响与时间演化。",
+                "若需要交易决策，建议结合更细粒度市场数据。"
+            ],
+            "next_actions": [
+                "继续问这个主题是否值得短线关注",
+                "只看这个主题过去 24 小时的实时新闻"
+            ],
+            "tool_trace_refs": [step.tool_name for step in steps if step.tool_name],
+            "sections": {
+                "news": news_items,
+                "keywords": keywords,
+                "trend": trend,
+                "similar": steps[3].result if len(steps) > 3 else [],
+            }
+        }

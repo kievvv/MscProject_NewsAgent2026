@@ -30,6 +30,7 @@ class SkillResult:
     skill_name: str
     steps: List[SkillStep]
     final_report: str
+    structured_output: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
@@ -42,12 +43,15 @@ class SkillResult:
                 {
                     'name': step.name,
                     'description': step.description,
+                    'tool_name': step.tool_name,
+                    'params': step.params,
                     'completed': step.completed,
                     'error': step.error
                 }
                 for step in self.steps
             ],
             'final_report': self.final_report,
+            'structured_output': self.structured_output,
             'metadata': self.metadata,
             'started_at': self.started_at,
             'completed_at': self.completed_at,
@@ -87,6 +91,17 @@ class BaseSkill(ABC):
             报告文本
         """
         pass
+
+    def build_structured_output(self, steps: List[SkillStep], report: str) -> Dict[str, Any]:
+        """生成结构化输出，子类可覆盖。"""
+        return {
+            "title": self.name,
+            "summary": report[:200],
+            "key_points": [],
+            "evidence_news_ids": [],
+            "risk_notes": [],
+            "next_actions": [],
+        }
 
     def execute(self, params: Dict[str, Any] = None) -> SkillResult:
         """
@@ -128,6 +143,7 @@ class BaseSkill(ABC):
                 skill_name=self.name,
                 steps=self.steps,
                 final_report=report,
+                structured_output=self.build_structured_output(self.steps, report),
                 metadata=params,
                 started_at=started_at,
                 completed_at=completed_at
@@ -140,6 +156,7 @@ class BaseSkill(ABC):
                 skill_name=self.name,
                 steps=self.steps,
                 final_report=f"技能执行失败: {str(e)}",
+                structured_output={},
                 metadata=params,
                 started_at=started_at,
                 completed_at=datetime.now().isoformat()

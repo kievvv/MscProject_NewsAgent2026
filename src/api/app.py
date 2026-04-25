@@ -22,6 +22,7 @@ from src.api.routes.agent import router as agent_router
 from src.api.routes.websocket import router as websocket_router
 from src.crawlers.telegram.config import RedisConfig
 from src.crawlers.telegram.monitor import build_pipeline_status
+from src.services.crypto_bootstrap_service import get_crypto_startup_bootstrap_service
 
 # 配置日志
 logging.basicConfig(
@@ -63,6 +64,12 @@ app.include_router(analyzer_router)
 app.include_router(frontend_router)
 
 
+@app.on_event("startup")
+async def startup_background_jobs():
+    """Schedule non-blocking startup jobs."""
+    get_crypto_startup_bootstrap_service().schedule_startup_check()
+
+
 @app.get("/api/health")
 async def health_check():
     """健康检查"""
@@ -94,7 +101,9 @@ async def crypto_pipeline_health():
         password=settings.REDIS_PASSWORD,
         queue_name="crypto_news_queue",
     )
-    return build_pipeline_status(redis_config)
+    status = build_pipeline_status(redis_config)
+    status.update(get_crypto_startup_bootstrap_service().get_status())
+    return status
 
 
 @app.exception_handler(Exception)

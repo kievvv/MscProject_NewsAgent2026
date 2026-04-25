@@ -1,12 +1,11 @@
 /**
  * Chat Widget JavaScript
- * 聊天小部件交互逻辑
+ * 全局 Agent 小组件
  */
 
 (function() {
     'use strict';
 
-    // 等待DOM加载完成
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initChatWidget);
     } else {
@@ -21,13 +20,18 @@
         const inputArea = document.getElementById('chat-widget-input');
         const sendBtn = document.getElementById('chat-widget-send');
         const quickActionBtns = document.querySelectorAll('.quick-action-btn');
+        const fullLink = document.querySelector('.chat-widget-fullscreen');
 
-        if (!widget || !btn) return;
+        if (!widget || !btn || !messagesContainer || !inputArea || !sendBtn) return;
 
         let currentConversationId = null;
         let isProcessing = false;
+        const userId = (window.CIApp && window.CIApp.getUserId()) || 'widget_user';
 
-        // 切换聊天面板
+        if (fullLink && window.CIApp) {
+            fullLink.href = window.CIApp.getChatUrl();
+        }
+
         btn.addEventListener('click', () => {
             widget.classList.toggle('active');
             if (widget.classList.contains('active')) {
@@ -35,17 +39,12 @@
             }
         });
 
-        // 关闭聊天面板
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                widget.classList.remove('active');
-            });
-        }
+        closeBtn?.addEventListener('click', () => {
+            widget.classList.remove('active');
+        });
 
-        // 发送消息
         sendBtn.addEventListener('click', sendMessage);
 
-        // Enter发送，Shift+Enter换行
         inputArea.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -53,21 +52,27 @@
             }
         });
 
-        // 自动调整输入框高度
         inputArea.addEventListener('input', () => {
             inputArea.style.height = 'auto';
             inputArea.style.height = Math.min(inputArea.scrollHeight, 100) + 'px';
         });
 
-        // 快捷操作按钮
-        quickActionBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const action = btn.dataset.action;
-                handleQuickAction(action);
+        quickActionBtns.forEach(button => {
+            button.addEventListener('click', () => {
+                const action = button.dataset.action;
+                const promptMap = {
+                    daily: '生成一份适合我的个性化市场简报',
+                    trending: '分析一下今天的市场局势，给我3个最重要的结论',
+                    alpha: '帮我筛出过去6小时更适合短线关注的高波动机会'
+                };
+                const prompt = promptMap[action];
+                if (prompt) {
+                    inputArea.value = prompt;
+                    sendMessage();
+                }
             });
         });
 
-        // 发送消息函数
         async function sendMessage() {
             const message = inputArea.value.trim();
             if (!message || isProcessing) return;
@@ -75,27 +80,20 @@
             isProcessing = true;
             sendBtn.disabled = true;
 
-            // 添加用户消息到界面
             addMessage(message, 'user');
-
-            // 清空输入框
             inputArea.value = '';
             inputArea.style.height = 'auto';
 
-            // 显示加载动画
             const loadingEl = addLoadingMessage();
 
             try {
-                // 调用API
                 const response = await fetch('/api/v1/agent/chat', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: message,
+                        message,
                         conversation_id: currentConversationId,
-                        user_id: 'widget_user'
+                        user_id: userId
                     })
                 });
 
@@ -104,20 +102,15 @@
                 }
 
                 const data = await response.json();
-
-                // 移除加载动画
                 removeLoadingMessage(loadingEl);
+                addAgentResponse(data);
 
-                // 添加AI回复
-                if (data.response) {
-                    addMessage(data.response, 'assistant');
-                }
-
-                // 保存会话ID
                 if (data.conversation_id) {
                     currentConversationId = data.conversation_id;
+                    if (fullLink && window.CIApp) {
+                        fullLink.href = window.CIApp.getChatUrl(currentConversationId);
+                    }
                 }
-
             } catch (error) {
                 console.error('发送消息失败:', error);
                 removeLoadingMessage(loadingEl);
@@ -129,112 +122,35 @@
             }
         }
 
-        // 处理快捷操作
-        async function handleQuickAction(action) {
-            let skillName = '';
-            let message = '';
+        function addAgentResponse(data) {
+            if (!data) return;
+            addMessage(data.response || '已完成当前任务。', 'assistant');
 
-            switch (action) {
-                case 'daily':
-                    skillName = 'DailyBriefing';
-                    message = '生成今日市场简报';
-                    break;
-                case 'trending':
-                    message = '最近有什么热门趋势？';
-                    break;
-                case 'alpha':
-                    skillName = 'AlphaHunter';
-                    message = '帮我找找Alpha机会';
-                    break;
-                default:
-                    return;
-            }
+            const blocks = Array.isArray(data.result_blocks) ? data.result_blocks : [];
+            if (!blocks.length) return;
 
-            if (isProcessing) return;
+            const messageEl = document.createElement('div');
+            messageEl.className = 'chat-message assistant';
 
-            isProcessing = true;
+            const avatarEl = document.createElement('div');
+            avatarEl.className = 'message-avatar';
+            avatarEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
 
-            // 添加用户消息
-            addMessage(message, 'user');
+            const contentEl = document.createElement('div');
+            contentEl.className = 'message-content';
+            contentEl.innerHTML = blocks.slice(0, 2).map((block) => `
+                <div style="margin-top:8px;padding:10px 12px;border-radius:12px;background:rgba(99,102,241,0.08);">
+                    <p style="margin:0 0 6px;"><strong>${escapeHtml(block.title || '任务结果')}</strong></p>
+                    <p style="margin:0;color:#475569;">${escapeHtml(block.summary || '')}</p>
+                </div>
+            `).join('') + `<p style="margin-top: 8px;"><a href="${window.CIApp ? window.CIApp.getChatUrl(currentConversationId) : '/chat'}" style="color: #667eea;">进入研究工作区继续追问 →</a></p>`;
 
-            // 显示加载动画
-            const loadingEl = addLoadingMessage();
-
-            try {
-                let response, data;
-
-                if (skillName) {
-                    // 执行技能
-                    response = await fetch('/api/v1/agent/skills/execute', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            skill_name: skillName,
-                            user_id: 'widget_user',
-                            params: {}
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('技能执行失败');
-                    }
-
-                    data = await response.json();
-
-                    // 移除加载动画
-                    removeLoadingMessage(loadingEl);
-
-                    // 添加技能报告
-                    if (data.final_report) {
-                        addSkillReport(data.final_report, skillName);
-                    }
-
-                } else {
-                    // 普通聊天
-                    response = await fetch('/api/v1/agent/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            message: message,
-                            conversation_id: currentConversationId,
-                            user_id: 'widget_user'
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('API请求失败');
-                    }
-
-                    data = await response.json();
-
-                    // 移除加载动画
-                    removeLoadingMessage(loadingEl);
-
-                    // 添加AI回复
-                    if (data.response) {
-                        addMessage(data.response, 'assistant');
-                    }
-
-                    // 保存会话ID
-                    if (data.conversation_id) {
-                        currentConversationId = data.conversation_id;
-                    }
-                }
-
-            } catch (error) {
-                console.error('快捷操作失败:', error);
-                removeLoadingMessage(loadingEl);
-                addMessage('抱歉，操作失败，请稍后重试。', 'assistant');
-            } finally {
-                isProcessing = false;
-            }
+            messageEl.appendChild(avatarEl);
+            messageEl.appendChild(contentEl);
+            messagesContainer.appendChild(messageEl);
+            scrollToBottom();
         }
 
-        // 添加消息到界面
         function addMessage(text, role) {
             const messageEl = document.createElement('div');
             messageEl.className = `chat-message ${role}`;
@@ -251,40 +167,10 @@
 
             messageEl.appendChild(avatarEl);
             messageEl.appendChild(contentEl);
-
             messagesContainer.appendChild(messageEl);
             scrollToBottom();
         }
 
-        // 添加技能报告
-        function addSkillReport(report, skillName) {
-            const messageEl = document.createElement('div');
-            messageEl.className = 'chat-message assistant';
-
-            const avatarEl = document.createElement('div');
-            avatarEl.className = 'message-avatar';
-            avatarEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
-
-            const contentEl = document.createElement('div');
-            contentEl.className = 'message-content';
-
-            // 简化报告显示（只显示前300个字符）
-            const shortReport = report.length > 300 ? report.substring(0, 300) + '...' : report;
-
-            contentEl.innerHTML = `
-                <p><strong>📊 ${skillName} 报告已生成</strong></p>
-                <pre style="white-space: pre-wrap; font-size: 12px; margin: 8px 0;">${escapeHtml(shortReport)}</pre>
-                <p style="margin-top: 8px;"><a href="/chat" style="color: #667eea;">查看完整报告 →</a></p>
-            `;
-
-            messageEl.appendChild(avatarEl);
-            messageEl.appendChild(contentEl);
-
-            messagesContainer.appendChild(messageEl);
-            scrollToBottom();
-        }
-
-        // 添加加载动画
         function addLoadingMessage() {
             const messageEl = document.createElement('div');
             messageEl.className = 'chat-message assistant';
@@ -299,34 +185,27 @@
 
             messageEl.appendChild(avatarEl);
             messageEl.appendChild(contentEl);
-
             messagesContainer.appendChild(messageEl);
             scrollToBottom();
-
             return messageEl;
         }
 
-        // 移除加载动画
         function removeLoadingMessage(loadingEl) {
             if (loadingEl && loadingEl.parentNode) {
                 loadingEl.parentNode.removeChild(loadingEl);
             }
         }
 
-        // 格式化消息
         function formatMessage(text) {
-            // 简单的换行处理
             return escapeHtml(text).replace(/\n/g, '<br>');
         }
 
-        // HTML转义
         function escapeHtml(text) {
             const div = document.createElement('div');
-            div.textContent = text;
+            div.textContent = text || '';
             return div.innerHTML;
         }
 
-        // 滚动到底部
         function scrollToBottom() {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }

@@ -66,6 +66,9 @@ class NewsResponse(NewsBase):
     currency: Optional[str] = None
     industry: Optional[str] = None
     stock_code: Optional[str] = None
+    url: Optional[str] = None
+    original_text: Optional[str] = None
+    source_type: Optional[str] = None
 
     class Config:
         from_attributes = True

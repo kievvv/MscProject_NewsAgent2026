@@ -6,6 +6,7 @@
     <title>{% block title %}Crypto Insight{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/chat_widget.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/app_identity.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,6 +21,7 @@
             </a>
             <div class="nav-links">
                 <a class="nav-item {% if request.url.path == '/' %}active{% endif %}" href="/">仪表盘</a>
+                <a class="nav-item {% if request.url.path == '/chat' %}active{% endif %}" href="/chat">研究工作区</a>
                 <a class="nav-item {% if request.url.path.startswith('/search') %}active{% endif %}" href="/search">新闻情报</a>
                 <a class="nav-item {% if request.url.path == '/analyzer' %}active{% endif %}" href="/analyzer">关键词分析</a>
             </div>
@@ -39,6 +41,30 @@
     <main class="app-main">
         {% block content %}{% endblock %}
     </main>
+    <div id="agent-command-palette" class="ci-command-palette glass-panel" hidden>
+        <div class="ci-overlay-header">
+            <div>
+                <h3>Crypto Research Agent</h3>
+                <p>输入 `/` 后可查看能力、模板和数据范围</p>
+            </div>
+            <button type="button" class="mini-link" data-close-overlay="palette">关闭</button>
+        </div>
+        <input id="agent-command-search" class="search-input-mini ci-palette-search" type="text" placeholder="输入 news、deepdive、BTC..." />
+        <div id="agent-command-content" class="ci-palette-content"></div>
+    </div>
+    <div id="news-detail-drawer" class="ci-overlay ci-overlay-right" hidden>
+        <div class="ci-overlay-backdrop" data-close-overlay="news"></div>
+        <div class="ci-overlay-panel glass-panel ci-news-drawer" role="dialog" aria-modal="true" aria-label="新闻详情">
+            <div class="ci-overlay-header">
+                <div>
+                    <h3>新闻详情</h3>
+                    <p id="news-detail-meta">正在加载...</p>
+                </div>
+                <button type="button" class="mini-link" data-close-overlay="news">关闭</button>
+            </div>
+            <div id="news-detail-body" class="ci-news-detail-body"></div>
+        </div>
+    </div>
     <footer class="app-footer">
         <span>© 2025 Crypto Insight · 市场情报工作台</span>
         <span class="footer-links">
@@ -46,6 +72,9 @@
             <a href="https://www.alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener">情绪指数来源</a>
         </span>
     </footer>
+    <script src="{{ url_for('static', path='/app_identity.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
     <script>
     (function(){
         const form = document.getElementById('global-search-form');
@@ -108,6 +137,304 @@
                 console.error('Global search failed', err);
             }
         });
+    })();
+    </script>
+    <script>
+    (function(){
+        const palette = document.getElementById('agent-command-palette');
+        const paletteSearch = document.getElementById('agent-command-search');
+        const paletteContent = document.getElementById('agent-command-content');
+        const newsDrawer = document.getElementById('news-detail-drawer');
+        const newsDetailBody = document.getElementById('news-detail-body');
+        const newsDetailMeta = document.getElementById('news-detail-meta');
+        let capabilitiesCache = null;
+        let activePromptInput = null;
+
+        function escapeHtml(text){
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function basicMarkdownToHtml(rawText){
+            const raw = String(rawText || '').replace(/\r\n/g, '\n');
+            const lines = raw.split('\n');
+            const chunks = [];
+            let inList = false;
+            lines.forEach((line) => {
+                const trimmed = line.trim();
+                if (!trimmed) {
+                    if (inList) {
+                        chunks.push('</ul>');
+                        inList = false;
+                    }
+                    return;
+                }
+                const heading = trimmed.match(/^(#{1,4})\s+(.*)$/);
+                if (heading) {
+                    if (inList) {
+                        chunks.push('</ul>');
+                        inList = false;
+                    }
+                    const level = heading[1].length;
+                    chunks.push(`<h${level}>${escapeHtml(heading[2])}</h${level}>`);
+                    return;
+                }
+                const list = trimmed.match(/^[-*]\s+(.*)$/);
+                if (list) {
+                    if (!inList) {
+                        chunks.push('<ul>');
+                        inList = true;
+                    }
+                    chunks.push(`<li>${escapeHtml(list[1])}</li>`);
+                    return;
+                }
+                if (inList) {
+                    chunks.push('</ul>');
+                    inList = false;
+                }
+                chunks.push(`<p>${escapeHtml(trimmed)}</p>`);
+            });
+            if (inList) chunks.push('</ul>');
+            return chunks.join('');
+        }
+
+        function postProcessMarkdown(html){
+            return html
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/`([^`]+?)`/g, '<code>$1</code>')
+                .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        }
+
+        function renderMarkdown(text){
+            const raw = String(text || '');
+            let html = '';
+            if (window.marked) {
+                html = window.marked.parse(raw);
+            } else {
+                html = basicMarkdownToHtml(raw);
+            }
+            html = postProcessMarkdown(html);
+            if (window.DOMPurify) {
+                return window.DOMPurify.sanitize(html);
+            }
+            return html;
+        }
+
+        function stripMarkdown(text){
+            return String(text || '')
+                .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+                .replace(/[*_`>#-]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        async function fetchCapabilities(){
+            if (capabilitiesCache) return capabilitiesCache;
+            const response = await fetch('/api/v1/agent/capabilities');
+            const data = await response.json();
+            capabilitiesCache = Array.isArray(data.capabilities) ? data.capabilities : [];
+            return capabilitiesCache;
+        }
+
+        function flattenCapabilities(groups){
+            const items = [];
+            (groups || []).forEach((group) => {
+                (group.items || []).forEach((item) => items.push({
+                    group: group.group,
+                    ...item,
+                }));
+            });
+            return items;
+        }
+
+        function renderPalette(groups, keyword){
+            const q = String(keyword || '').trim().toLowerCase();
+            const items = flattenCapabilities(groups).filter((item) => {
+                if (!q) return true;
+                return [item.group, item.title, item.description, ...(item.sample_prompts || [])]
+                    .join(' ')
+                    .toLowerCase()
+                    .includes(q);
+            });
+            const quickCommands = [
+                { label: '/news BTC 7d', template: '筛选这一周与 BTC 相关的新闻' },
+                { label: '/market today', template: '分析今天市场局势，给我 3 个最重要的结论' },
+                { label: '/deepdive DeFi', template: '围绕 DeFi 做一轮深挖' },
+                { label: '/scan short-term', template: '帮我找短线高波动机会' },
+                { label: '/briefing', template: '生成一份个性化市场简报' },
+            ].filter((item) => !q || `${item.label} ${item.template}`.toLowerCase().includes(q));
+            paletteContent.innerHTML = `
+                <section class="ci-palette-section">
+                    <h4>当前 Agent</h4>
+                    <div class="ci-palette-facts">
+                        <span class="badge outline">Crypto 新闻</span>
+                        <span class="badge outline">关键词趋势</span>
+                        <span class="badge outline">市场快照</span>
+                        <span class="badge outline">机会扫描</span>
+                    </div>
+                </section>
+                <section class="ci-palette-section">
+                    <h4>快速模板</h4>
+                    <div class="ci-palette-list">
+                        ${quickCommands.map((item) => `
+                            <button type="button" class="ci-palette-item" data-template="${escapeHtml(item.template)}">
+                                <strong>${escapeHtml(item.label)}</strong>
+                                <span>${escapeHtml(item.template)}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </section>
+                <section class="ci-palette-section">
+                    <h4>能力说明</h4>
+                    <div class="ci-palette-list">
+                        ${items.map((item) => `
+                            <button type="button" class="ci-palette-item" data-template="${escapeHtml((item.sample_prompts || [])[0] || item.title || '')}">
+                                <strong>${escapeHtml(item.title || '能力')}</strong>
+                                <span>${escapeHtml(item.description || '')}</span>
+                                <small>代码：${escapeHtml((item.code_roles || []).join(' / ') || '—')} · LLM：${escapeHtml((item.llm_roles || []).join(' / ') || '—')}</small>
+                            </button>
+                        `).join('') || '<div class="capability-loading">暂无能力说明</div>'}
+                    </div>
+                </section>
+            `;
+            paletteContent.querySelectorAll('[data-template]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    if (activePromptInput) {
+                        activePromptInput.value = btn.dataset.template || '';
+                        activePromptInput.focus();
+                    }
+                    closePalette();
+                });
+            });
+        }
+
+        async function openPalette(inputEl){
+            activePromptInput = inputEl || activePromptInput;
+            palette.hidden = false;
+            if (activePromptInput) {
+                const rect = activePromptInput.getBoundingClientRect();
+                palette.style.left = `${Math.max(16, rect.left)}px`;
+                palette.style.top = `${rect.bottom + 8 + window.scrollY}px`;
+                palette.style.width = `${Math.min(780, rect.width)}px`;
+            }
+            paletteSearch.value = '';
+            const groups = await fetchCapabilities();
+            renderPalette(groups, '');
+            setTimeout(() => paletteSearch.focus(), 10);
+        }
+
+        function closePalette(){
+            palette.hidden = true;
+        }
+
+        function renderNewsDetail(data){
+            const keywords = data.keyword_list || [];
+            const currencies = data.currency_list || [];
+            const related = data.related_news || [];
+            newsDetailMeta.textContent = `${data.source_label || data.source_badge || 'Crypto'} · ${data.date || '—'}`;
+            newsDetailBody.innerHTML = `
+                <article class="ci-news-article">
+                    <h2>${escapeHtml(stripMarkdown(data.title || '未命名资讯'))}</h2>
+                    <div class="ci-news-actions">
+                        ${data.url ? `<a class="mini-link" href="${escapeHtml(data.url)}" target="_blank" rel="noopener">查看原文</a>` : ''}
+                        ${keywords[0] ? `<a class="mini-link" href="/search?source=crypto&keyword=${encodeURIComponent(keywords[0])}">关联搜索</a>` : ''}
+                    </div>
+                    <div class="ci-news-tags">
+                        ${keywords.map((item) => `<span class="badge outline">${escapeHtml(item)}</span>`).join('')}
+                        ${currencies.map((item) => `<span class="badge accent">${escapeHtml(item)}</span>`).join('')}
+                    </div>
+                    <section class="ci-news-section">
+                        <h4>摘要</h4>
+                        <div class="ci-markdown">${renderMarkdown(data.summary || '暂无摘要')}</div>
+                    </section>
+                    <section class="ci-news-section">
+                        <h4>原文片段</h4>
+                        <div class="ci-markdown">${renderMarkdown(data.original_text || '暂无原文')}</div>
+                    </section>
+                    <section class="ci-news-section">
+                        <h4>相关资讯</h4>
+                        <div class="ci-related-list">
+                            ${related.slice(0, 5).map((item) => `
+                                <button type="button" class="ci-related-item" data-news-id="${escapeHtml(String(item.id || ''))}">
+                                    <strong>${escapeHtml(item.title || '未命名资讯')}</strong>
+                                    <span>${escapeHtml(item.date || '')}</span>
+                                </button>
+                            `).join('') || '<p class="text-muted">暂无相关资讯</p>'}
+                        </div>
+                    </section>
+                </article>
+            `;
+            newsDetailBody.querySelectorAll('[data-news-id]').forEach((btn) => {
+                btn.addEventListener('click', () => openNewsDetail(btn.dataset.newsId));
+            });
+        }
+
+        async function openNewsDetail(newsId){
+            if (!newsId) return;
+            newsDrawer.hidden = false;
+            document.body.classList.add('overlay-open');
+            newsDetailMeta.textContent = '正在加载...';
+            newsDetailBody.innerHTML = '<div class="capability-loading">正在加载新闻详情...</div>';
+            try {
+                const response = await fetch(`/api/v1/news/${encodeURIComponent(newsId)}`);
+                const payload = await response.json();
+                renderNewsDetail(payload.data || payload);
+            } catch (error) {
+                newsDetailBody.innerHTML = '<div class="capability-loading">新闻详情暂不可用</div>';
+            }
+        }
+
+        function closeNews(){
+            newsDrawer.hidden = true;
+            document.body.classList.remove('overlay-open');
+        }
+
+        paletteSearch?.addEventListener('input', async () => {
+            const groups = await fetchCapabilities();
+            renderPalette(groups, paletteSearch.value);
+        });
+
+        document.addEventListener('click', (event) => {
+            const target = event.target.closest('[data-close-overlay], [data-news-detail], [data-news-id], [data-agent-palette]');
+            if (!target) return;
+            const action = target.dataset.closeOverlay;
+            if (action === 'palette') closePalette();
+            if (action === 'news') closeNews();
+            if (target.dataset.newsDetail) {
+                event.preventDefault();
+                openNewsDetail(target.dataset.newsDetail);
+            }
+            if (target.dataset.newsId) {
+                event.preventDefault();
+                openNewsDetail(target.dataset.newsId);
+            }
+            if (target.dataset.agentPalette !== undefined) {
+                event.preventDefault();
+                openPalette(activePromptInput);
+            }
+        });
+
+        document.addEventListener('mousedown', (event) => {
+            if (!palette.hidden && !palette.contains(event.target) && event.target !== activePromptInput) {
+                closePalette();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                if (!palette.hidden) closePalette();
+                if (!newsDrawer.hidden) closeNews();
+            }
+        });
+
+        window.CIRenderMarkdown = renderMarkdown;
+        window.CIStripMarkdown = stripMarkdown;
+        window.CIApp = window.CIApp || {};
+        window.CIApp.openAgentPalette = openPalette;
+        window.CIApp.openNewsDetail = openNewsDetail;
     })();
     </script>
     {% block scripts %}{% endblock %}

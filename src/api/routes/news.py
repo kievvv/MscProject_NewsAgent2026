@@ -2,10 +2,11 @@
 新闻API路由
 """
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.services import NewsService
+from src.services import NewsService, get_search_service
+from src.core.models import NewsSource
 from src.api.dependencies import get_news_service_dep, get_pagination_params
 from src.api.schemas import (
     Response,
@@ -55,10 +56,46 @@ async def get_news(
         if not news:
             raise HTTPException(status_code=404, detail="新闻不存在")
 
-        return Response(
-            success=True,
-            data=NewsResponse.model_validate(news)
-        )
+        payload = NewsResponse.model_validate(news).model_dump()
+        payload["title"] = payload.get("title") or getattr(news, "title", None) or (news.text[:80] if getattr(news, "text", None) else "未命名资讯")
+        payload["summary"] = payload.get("summary") or getattr(news, "abstract", None) or getattr(news, "summary", None) or (news.text[:160] if getattr(news, "text", None) else "")
+        payload["source_type"] = getattr(news.source, "value", "crypto")
+        payload["original_text"] = getattr(news, "original_text", None) or news.text
+        payload["url"] = getattr(news, "url", None) or ""
+        payload["keyword_list"] = getattr(news, "keyword_list", [])
+        payload["currency_list"] = getattr(news, "currency_list", [])
+
+        related_news: List[Dict[str, Any]] = []
+        keyword_list = payload["keyword_list"][:3]
+        if keyword_list:
+            search_service = get_search_service(source=news.source if hasattr(news, "source") else NewsSource.CRYPTO)
+            seen_ids = {news.id}
+            for keyword in keyword_list:
+                try:
+                    matches = search_service.search_by_keyword(keyword, exact=False, limit=6)
+                except Exception:
+                    continue
+                for item in matches:
+                    if item.id in seen_ids:
+                        continue
+                    seen_ids.add(item.id)
+                    related_news.append({
+                        "id": item.id,
+                        "title": item.title or item.text[:80],
+                        "date": item.date,
+                        "summary": getattr(item, "abstract", None) or item.text[:120],
+                        "url": getattr(item, "url", None) or "",
+                    })
+                    if len(related_news) >= 6:
+                        break
+                if len(related_news) >= 6:
+                    break
+
+        payload["related_news"] = related_news
+        payload["source_label"] = news.channel_id if hasattr(news, "channel_id") else None
+        payload["source_badge"] = "Web3" if payload["source_type"] == "crypto" else "港股"
+
+        return Response(success=True, data=payload)
     except HTTPException:
         raise
     except Exception as e:

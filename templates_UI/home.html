@@ -6,11 +6,28 @@
 <section class="dashboard-hero glass-panel">
     <div class="hero-copy">
         <p class="hero-kicker">Crypto Insight · 情报驾驶舱</p>
-        <h1>从 <span>新闻噪音</span> 到 <span>交易信号</span></h1>
-        <p class="hero-subtitle">即时捕捉市场热点、验证叙事强度、发现潜在补涨标的。</p>
-        <div class="hero-actions">
-            <a href="/analyzer" class="btn btn-primary">🚀 启动热点雷达</a>
-            <a href="/search" class="btn btn-secondary">🔎 快速检索资讯</a>
+        <h1>把市场问题放进同一条研究链路</h1>
+        <p class="hero-subtitle">从新闻、市场与主题线索中收束结论。</p>
+        <div class="hero-profile-row">
+            <span class="badge outline">画像摘要</span>
+            <span class="hero-profile-text" data-profile-summary>{{ profile_summary.summary }}</span>
+        </div>
+        <div class="agent-task-pills hero-task-pills">
+            {% for task in home_tasks %}
+            <button class="task-pill" type="button" data-agent-prompt="{{ task.prompt }}">{{ task.label }}</button>
+            {% endfor %}
+        </div>
+        <div class="hero-agent-box" data-home-user="{{ user_id }}">
+            <textarea id="home-agent-input" class="chat-input home-agent-input" rows="3" placeholder="例如：筛选这一周与 BTC 相关的新闻"></textarea>
+            <div class="agent-input-actions">
+                <button id="home-capability-btn" class="btn btn-secondary" type="button">查看能力</button>
+                <button id="home-profile-btn" class="btn btn-secondary" type="button">调整画像</button>
+                <button id="home-agent-submit" class="btn btn-primary" type="button">开始研究</button>
+            </div>
+        </div>
+        <div class="hero-actions hero-links">
+            <a href="/chat" class="mini-link">进入研究工作区</a>
+            <a href="/search" class="mini-link">查看新闻情报</a>
         </div>
         <p class="refresh-indicator" data-region="refresh-indicator">数据每 60 秒自动刷新</p>
     </div>
@@ -37,33 +54,97 @@
             </div>
             <div class="fng-placeholder" data-fng-placeholder{% if fear_greed.value %} style="display:none"{% endif %}>暂无数据</div>
         </div>
+        <div class="glass-panel compact hero-market-mini">
+            <div class="card-header">
+                <span>市场快照</span>
+                <a href="/search" class="mini-link">查看市场</a>
+            </div>
+            <div class="market-mini-list">
+                {% if crypto_market_board and crypto_market_board.coins %}
+                    {% for coin in crypto_market_board.coins[:3] %}
+                    <div class="market-mini-item">
+                        <strong>{{ coin.symbol }}</strong>
+                        <span>
+                            {% if coin.price_change_percentage_24h is defined %}
+                                {{ ('+' if (coin.price_change_percentage_24h or 0) > 0 else '') ~ ('%.2f'|format(coin.price_change_percentage_24h or 0)) }}%
+                            {% else %}
+                                {{ ('+' if (coin.price_change_pct or 0) > 0 else '') ~ ('%.2f'|format(coin.price_change_pct or 0)) }}%
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">行情数据暂不可用</p>
+                {% endif %}
+            </div>
+        </div>
     </aside>
 </section>
 
 <section class="dashboard-section">
     <div class="section-header">
-        <h2>🤖 AI 智能助手</h2>
-        <a href="/chat" class="section-action">进入对话 →</a>
+        <h2>Agent 结果</h2>
+        <a href="/chat" class="section-action">在研究工作区继续 →</a>
     </div>
-    <div class="ai-skills-grid">
-        <div class="skill-card glass-panel compact" data-skill="DailyBriefing">
-            <div class="skill-icon">📊</div>
-            <h3 class="skill-title">每日简报</h3>
-            <p class="skill-desc">获取市场概览、热门新闻和趋势分析</p>
-            <button class="btn btn-primary skill-trigger">生成报告</button>
+    <div class="agent-workbench glass-panel" data-home-user="{{ user_id }}">
+        <div id="home-agent-result" class="home-agent-result" style="display:none;">
+            <div class="home-agent-result-header">
+                <h4>当前任务结果</h4>
+                <a id="home-agent-open-chat" href="/chat" class="mini-link">在研究工作区继续追问 →</a>
+            </div>
+            <div id="home-agent-result-body" class="home-agent-result-body"></div>
         </div>
-        <div class="skill-card glass-panel compact" data-skill="DeepDive">
-            <div class="skill-icon">🔍</div>
-            <h3 class="skill-title">深度分析</h3>
-            <p class="skill-desc">深入挖掘特定话题的新闻和趋势</p>
-            <button class="btn btn-primary skill-trigger">开始分析</button>
+    </div>
+</section>
+
+<section class="dashboard-section">
+    <div class="section-header">
+        <div>
+            <h2>🎯 为你推荐</h2>
+            <small data-region="recommendation-status">
+                {% if recommendation_status.mode == 'historical_fallback' %}
+                    暂无实时更新，已从历史资讯中为你挑选
+                {% elif recommendation_status.lookback_days %}
+                    根据画像和近 {{ recommendation_status.lookback_days }} 天资讯精选
+                {% else %}
+                    根据画像和近期任务偏好精选的资讯
+                {% endif %}
+            </small>
         </div>
-        <div class="skill-card glass-panel compact" data-skill="AlphaHunter">
-            <div class="skill-icon">🎯</div>
-            <h3 class="skill-title">Alpha挖掘</h3>
-            <p class="skill-desc">发现低估资产和新兴机会</p>
-            <button class="btn btn-primary skill-trigger">挖掘机会</button>
-        </div>
+        <button id="refresh-recommendations-btn" class="mini-link refresh-recommendations-btn" type="button">刷新推荐</button>
+    </div>
+    <div class="news-stack" data-region="recommended-news">
+        {% if recommended_news %}
+            {% for news in recommended_news %}
+                <article class="mini-news glass-panel">
+                    <header>
+                        <span class="badge">{{ news.source_badge }}</span>
+                        <span class="timestamp">{{ news.date }}</span>
+                    </header>
+                    <h3>
+                        {% if news.id %}
+                        <button type="button" class="news-detail-btn" data-news-detail="{{ news.id }}">{{ news.title|replace('**', '')|replace('*', '') }}</button>
+                        {% else %}
+                        {{ news.title|replace('**', '')|replace('*', '') }}
+                        {% endif %}
+                    </h3>
+                    <p>{{ news.summary or news.original_text[:120] }}</p>
+                    <div class="recommendation-meta">
+                        {% if news.recommendation_reasons %}
+                            {{ news.recommendation_reasons[:2]|join(' · ') }}
+                        {% else %}
+                            与当前画像相关
+                        {% endif %}
+                    </div>
+                    <div class="mini-actions">
+                        {% if news.id %}<button type="button" class="mini-link" data-news-detail="{{ news.id }}">查看详情</button>{% endif %}
+                        {% if news.keyword_list %}<a href="/search?source=crypto&keyword={{ news.keyword_list[0] }}">关联搜索</a>{% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        {% else %}
+            <div class="empty-card glass-panel">暂无可推荐资讯，请先运行采集。</div>
+        {% endif %}
     </div>
 </section>
 
@@ -315,9 +396,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const cryptoTrending = document.querySelector('[data-region="crypto-trending"]');
     const hkTrending = document.querySelector('[data-region="hk-trending"]');
     const cryptoLatest = document.querySelector('[data-region="crypto-latest"]');
+    const recommendedNews = document.querySelector('[data-region="recommended-news"]');
+    const recommendationStatus = document.querySelector('[data-region="recommendation-status"]');
     const hkLatest = document.querySelector('[data-region="hk-latest"]');
     const refreshIndicator = document.querySelector('[data-region="refresh-indicator"]');
     const marketBoard = document.querySelector('[data-market-list]');
+    const homeUserId = (window.CIApp && window.CIApp.getUserId()) || '{{ user_id }}';
 
     if (!fngCard) {
         return;
@@ -543,6 +627,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const updateRecommendationStatus = (status) => {
+        if (!recommendationStatus || !status) {
+            return;
+        }
+        if (status.mode === 'historical_fallback') {
+            recommendationStatus.textContent = '暂无实时更新，已从历史资讯中为你挑选';
+        } else if (status.lookback_days) {
+            recommendationStatus.textContent = `根据画像和近 ${status.lookback_days} 天资讯精选`;
+        } else if (status.mode === 'empty') {
+            recommendationStatus.textContent = '暂无可推荐资讯';
+        } else {
+            recommendationStatus.textContent = '根据画像和近期任务偏好精选的资讯';
+        }
+    };
+
     const renderNewsStack = (container, items, options) => {
         if (!container) {
             return;
@@ -570,11 +669,30 @@ document.addEventListener('DOMContentLoaded', () => {
             header.appendChild(timestamp);
 
             const title = document.createElement('h3');
-            title.textContent = news.title || '未命名资讯';
+            if (news.id) {
+                const titleBtn = document.createElement('button');
+                titleBtn.type = 'button';
+                titleBtn.className = 'news-detail-btn';
+                titleBtn.dataset.newsId = news.id;
+                titleBtn.textContent = cleanText(news.title || '未命名资讯');
+                title.appendChild(titleBtn);
+            } else {
+                title.textContent = cleanText(news.title || '未命名资讯');
+            }
 
             const summary = document.createElement('p');
             const rawSummary = news.summary || news.original_text || '';
-            summary.textContent = rawSummary.length > 160 ? `${rawSummary.slice(0, 157)}…` : rawSummary || '暂无摘要';
+            const plainSummary = cleanText(rawSummary);
+            summary.textContent = plainSummary.length > 160 ? `${plainSummary.slice(0, 157)}…` : plainSummary || '暂无摘要';
+
+            let meta = null;
+
+            if (options.showRecommendationMeta) {
+                meta = document.createElement('div');
+                meta.className = 'recommendation-meta';
+                const reasons = Array.isArray(news.recommendation_reasons) ? news.recommendation_reasons.slice(0, 2) : [];
+                meta.textContent = reasons.length ? reasons.join(' · ') : '与当前画像相关';
+            }
 
             const actions = document.createElement('div');
             actions.className = 'mini-actions';
@@ -588,6 +706,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 actions.appendChild(originLink);
             }
 
+            if (news.id) {
+                const detailBtn = document.createElement('button');
+                detailBtn.type = 'button';
+                detailBtn.className = 'mini-link news-detail-btn';
+                detailBtn.dataset.newsId = news.id;
+                detailBtn.textContent = '查看详情';
+                actions.appendChild(detailBtn);
+            }
+
             if (news.keyword_list && news.keyword_list.length) {
                 const relatedLink = document.createElement('a');
                 relatedLink.href = `/search?source=${options.searchSource}&keyword=${encodeURIComponent(news.keyword_list[0] || '')}`;
@@ -598,6 +725,9 @@ document.addEventListener('DOMContentLoaded', () => {
             article.appendChild(header);
             article.appendChild(title);
             article.appendChild(summary);
+            if (meta) {
+                article.appendChild(meta);
+            }
             article.appendChild(actions);
             container.appendChild(article);
         });
@@ -614,7 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const refreshDashboard = async () => {
         try {
-            const response = await fetch('/api/dashboard', { cache: 'no-store' });
+            const response = await fetch(`/api/dashboard?user_id=${encodeURIComponent(homeUserId)}`, { cache: 'no-store' });
             if (!response.ok) {
                 throw new Error(`Request failed: ${response.status}`);
             }
@@ -643,6 +773,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 badgeClass: '',
                 searchSource: 'crypto'
             });
+            renderNewsStack(recommendedNews, payload.recommended_news || [], {
+                badgeLabel: 'For You',
+                badgeClass: '',
+                searchSource: 'crypto',
+                showRecommendationMeta: true
+            });
+            updateRecommendationStatus(payload.recommendation_status || {});
             renderNewsStack(hkLatest, payload.hk_latest || [], {
                 badgeLabel: 'HK',
                 badgeClass: 'hk',
@@ -661,110 +798,462 @@ document.addEventListener('DOMContentLoaded', () => {
 {% endif %}
 
 <script>
-// AI Skills Handler
 (function() {
-    const skillCards = document.querySelectorAll('.skill-card[data-skill]');
+    const userId = (window.CIApp && window.CIApp.getUserId()) || '{{ user_id }}';
+    const input = document.getElementById('home-agent-input');
+    const submitBtn = document.getElementById('home-agent-submit');
+    const capabilityBtn = document.getElementById('home-capability-btn');
+    const profileBtn = document.getElementById('home-profile-btn');
+    const resultWrap = document.getElementById('home-agent-result');
+    const resultBody = document.getElementById('home-agent-result-body');
+    const profileSummaryEl = document.querySelector('[data-profile-summary]');
+    const openChatLink = document.getElementById('home-agent-open-chat');
+    const taskPills = document.querySelectorAll('.task-pill');
+    const refreshRecommendationsBtn = document.getElementById('refresh-recommendations-btn');
+    const recommendedNews = document.querySelector('[data-region="recommended-news"]');
+    const recommendationStatus = document.querySelector('[data-region="recommendation-status"]');
 
-    skillCards.forEach(card => {
-        const btn = card.querySelector('.skill-trigger');
-        if (!btn) return;
+    let currentConversationId = null;
 
-        btn.addEventListener('click', async () => {
-            const skillName = card.dataset.skill;
-            const skillNameMap = {
-                'DailyBriefing': '每日简报',
-                'DeepDive': '深度分析',
-                'AlphaHunter': 'Alpha挖掘'
-            };
+    const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    };
 
-            btn.disabled = true;
-            btn.textContent = '执行中...';
+    const cleanText = (value) => window.CIStripMarkdown ? window.CIStripMarkdown(value) : String(value || '');
 
-            try {
-                const response = await fetch('/api/v1/agent/skills/execute', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        skill_name: skillName,
-                        user_id: 'home_user',
-                        params: skillName === 'DeepDive' ? { topic: 'bitcoin' } : {}
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('技能执行失败');
-                }
-
-                const data = await response.json();
-
-                // 显示成功消息
-                alert(`${skillNameMap[skillName] || skillName}报告已生成！\\n\\n点击确定前往聊天页面查看完整报告。`);
-
-                // 跳转到聊天页面
-                window.location.href = '/chat';
-
-            } catch (error) {
-                console.error('技能执行失败:', error);
-                alert('技能执行失败，请稍后重试。');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '生成报告';
+    const renderAnswerBlocks = (blocks) => {
+        return (blocks || []).map((block) => {
+            if (block.type === 'news_list') {
+                return `
+                    <section class="task-result-card">
+                        <h4>${escapeHtml(block.title || '新闻')}</h4>
+                        <div class="result-news-list">
+                            ${(block.items || []).map((item) => `
+                                <article class="task-result-news">
+                                    <button type="button" class="news-detail-btn" data-news-id="${escapeHtml(String(item.id || ''))}">${escapeHtml(cleanText(item.title || '未命名资讯'))}</button>
+                                    <p>${escapeHtml(cleanText(item.summary || '').slice(0, 180))}</p>
+                                    <div class="mini-actions">
+                                        ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">查看原文</a>` : ''}
+                                        ${item.id ? `<button type="button" class="mini-link news-detail-btn" data-news-id="${escapeHtml(String(item.id))}">查看详情</button>` : ''}
+                                        ${Array.isArray(item.keyword_list) && item.keyword_list[0] ? `<a href="/search?source=crypto&keyword=${encodeURIComponent(item.keyword_list[0])}">关联搜索</a>` : ''}
+                                    </div>
+                                </article>
+                            `).join('')}
+                        </div>
+                    </section>
+                `;
             }
+            if (block.type === 'market_snapshot') {
+                const coins = Array.isArray(block.data?.coins) ? block.data.coins.slice(0, 4) : [];
+                return `
+                    <section class="task-result-card">
+                        <h4>${escapeHtml(block.title || '市场快照')}</h4>
+                        <p>${escapeHtml(block.summary || '')}</p>
+                        <div class="market-inline-grid">
+                            ${coins.map((item) => `<div class="market-inline-item"><strong>${escapeHtml(item.symbol || '')}</strong><span>${escapeHtml(String(item.price_change_percentage_24h ?? '—'))}%</span></div>`).join('')}
+                        </div>
+                    </section>
+                `;
+            }
+            if (block.type === 'keyword_list') {
+                return `
+                    <section class="task-result-card">
+                        <h4>${escapeHtml(block.title || '相关关键词')}</h4>
+                        <div class="keyword-chip-group">
+                            ${(block.items || []).map((item) => `<a class="task-pill task-pill-link" href="/search?source=crypto&keyword=${encodeURIComponent(item.keyword || '')}">${escapeHtml(item.keyword || '')}</a>`).join('')}
+                        </div>
+                    </section>
+                `;
+            }
+            return '';
+        }).join('');
+    };
+
+    const renderResult = (data) => {
+        if (!resultWrap || !resultBody) return;
+        resultWrap.style.display = 'block';
+        resultBody.innerHTML = `
+            <div class="home-agent-intro ci-markdown">${window.CIRenderMarkdown ? window.CIRenderMarkdown(data.final_answer || data.response || data.reply || '') : escapeHtml(data.final_answer || data.response || data.reply || '')}</div>
+            ${renderAnswerBlocks(data.answer_blocks || [])}
+            <div class="message-meta-row">
+                <span class="message-process-badge">已调用 ${escapeHtml(String((data.execution_trace_summary || {}).total_tools ?? 0))} 个能力</span>
+                ${data.execution_id ? '<button type="button" class="mini-link" id="home-trace-btn">查看过程</button>' : ''}
+            </div>
+        `;
+        const traceBtn = document.getElementById('home-trace-btn');
+        if (traceBtn && data.execution_id) {
+            traceBtn.addEventListener('click', async () => {
+                const existing = resultBody.querySelector('.trace-drawer');
+                if (existing) {
+                    existing.remove();
+                    traceBtn.textContent = '查看过程';
+                    return;
+                }
+                traceBtn.textContent = '加载中...';
+                const response = await fetch(`/api/v1/agent/executions/${encodeURIComponent(data.execution_id)}`);
+                const payload = await response.json();
+                const panel = document.createElement('div');
+                panel.className = 'trace-drawer';
+                panel.innerHTML = `
+                    <section class="trace-panel">
+                        <h4>执行过程</h4>
+                        <ol class="trace-list">
+                            ${(payload.execution?.tool_calls || []).map((call) => `
+                                <li>
+                                    <div class="trace-title-row">
+                                        <strong>${escapeHtml(call.title || call.tool_id || '工具')}</strong>
+                                        <span>${escapeHtml(call.status || '')} · ${escapeHtml(String(call.duration_ms ?? '—'))}ms</span>
+                                    </div>
+                                    <p>${escapeHtml(call.input_preview || '')}</p>
+                                </li>
+                            `).join('')}
+                        </ol>
+                    </section>
+                `;
+                resultBody.appendChild(panel);
+                traceBtn.textContent = '收起过程';
+            });
+        }
+    };
+
+    const renderRecommendationCards = (items) => {
+        if (!recommendedNews) return;
+        recommendedNews.innerHTML = '';
+        if (!items || !items.length) {
+            const emptyCard = document.createElement('div');
+            emptyCard.className = 'empty-card glass-panel';
+            emptyCard.textContent = '暂无可推荐资讯，请先运行采集。';
+            recommendedNews.appendChild(emptyCard);
+            return;
+        }
+        items.forEach((news) => {
+            const article = document.createElement('article');
+            article.className = 'mini-news glass-panel';
+            const keyword = Array.isArray(news.keyword_list) && news.keyword_list.length ? news.keyword_list[0] : '';
+            const reasons = Array.isArray(news.recommendation_reasons) ? news.recommendation_reasons.slice(0, 2).join(' · ') : '与当前画像相关';
+            article.innerHTML = `
+                <header>
+                    <span class="badge">${escapeHtml(news.source_badge || 'For You')}</span>
+                    <span class="timestamp">${escapeHtml(news.date || '—')}</span>
+                </header>
+                <h3><button type="button" class="news-detail-btn" data-news-id="${escapeHtml(String(news.id || ''))}">${escapeHtml(cleanText(news.title || '未命名资讯'))}</button></h3>
+                <p>${escapeHtml(cleanText(news.summary || news.original_text || '').slice(0, 180))}</p>
+                <div class="recommendation-meta">${escapeHtml(reasons)}</div>
+                <div class="mini-actions">
+                    ${news.id ? `<button type="button" class="mini-link news-detail-btn" data-news-id="${escapeHtml(String(news.id))}">查看详情</button>` : ''}
+                    ${keyword ? `<a href="/search?source=crypto&keyword=${encodeURIComponent(keyword)}">关联搜索</a>` : ''}
+                </div>
+            `;
+            recommendedNews.appendChild(article);
         });
+    };
+
+    const updateRecommendationStatus = (status) => {
+        if (!recommendationStatus || !status) return;
+        if (status.mode === 'historical_fallback') {
+            recommendationStatus.textContent = '暂无实时更新，已从历史资讯中为你挑选';
+        } else if (status.lookback_days) {
+            recommendationStatus.textContent = `根据画像和近 ${status.lookback_days} 天资讯精选`;
+        } else if (status.mode === 'empty') {
+            recommendationStatus.textContent = '暂无可推荐资讯';
+        } else {
+            recommendationStatus.textContent = '根据画像和近期任务偏好精选的资讯';
+        }
+    };
+
+    const refreshRecommendations = async () => {
+        if (!refreshRecommendationsBtn) return;
+        refreshRecommendationsBtn.disabled = true;
+        refreshRecommendationsBtn.textContent = '刷新中...';
+        try {
+            const response = await fetch(`/api/recommendations/refresh?user_id=${encodeURIComponent(userId)}`, { cache: 'no-store' });
+            if (!response.ok) throw new Error('Refresh failed');
+            const data = await response.json();
+            renderRecommendationCards(data.recommended_news || []);
+            updateRecommendationStatus(data.recommendation_status || {});
+        } catch (error) {
+            console.error('刷新推荐失败', error);
+            if (recommendationStatus) recommendationStatus.textContent = '推荐刷新失败，已保留当前结果';
+        } finally {
+            refreshRecommendationsBtn.disabled = false;
+            refreshRecommendationsBtn.textContent = '刷新推荐';
+        }
+    };
+
+    const refreshProfileSummary = async () => {
+        try {
+            const response = await fetch(`/api/v1/agent/profile?user_id=${encodeURIComponent(userId)}`);
+            if (!response.ok) return;
+            const data = await response.json();
+            const summary = data.profile && data.profile.summary ? data.profile.summary.summary : '';
+            if (profileSummaryEl && summary) profileSummaryEl.textContent = summary;
+        } catch (error) {
+            console.error('加载画像失败', error);
+        }
+    };
+
+    const runAgentTask = async (prompt) => {
+        if (!prompt || !submitBtn) return;
+        if (prompt.trim() === '/') {
+            window.CIApp?.openAgentPalette(input);
+            return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = '处理中...';
+        try {
+            const response = await fetch('/api/v1/agent/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: prompt,
+                    conversation_id: currentConversationId,
+                    user_id: userId
+                })
+            });
+            if (!response.ok) throw new Error('Agent request failed');
+            const data = await response.json();
+            currentConversationId = data.conversation_id || currentConversationId;
+            if (openChatLink && currentConversationId) {
+                openChatLink.href = `/chat?conversation_id=${encodeURIComponent(currentConversationId)}`;
+            }
+            renderResult(data);
+        } catch (error) {
+            console.error('Agent任务失败', error);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '开始研究';
+        }
+    };
+
+    submitBtn?.addEventListener('click', () => runAgentTask(input?.value.trim()));
+    capabilityBtn?.addEventListener('click', () => window.CIApp?.openAgentPalette(input));
+    input?.addEventListener('keydown', (event) => {
+        if (event.key === '/' && input.value.trim() === '') {
+            event.preventDefault();
+            window.CIApp?.openAgentPalette(input);
+        }
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            runAgentTask(input?.value.trim());
+        }
     });
+    taskPills.forEach((pill) => pill.addEventListener('click', () => runAgentTask(pill.dataset.agentPrompt)));
+    refreshRecommendationsBtn?.addEventListener('click', refreshRecommendations);
+    profileBtn?.addEventListener('click', () => {
+        if (window.CIApp) {
+            window.CIApp.openOnboarding({
+                onComplete: () => window.location.reload()
+            });
+            return;
+        }
+        window.location.href = `/chat?open_onboarding=1&user_id=${encodeURIComponent(userId)}`;
+    });
+    refreshProfileSummary();
+    window.CIApp?.ensureOnboarding({
+        onComplete: () => window.location.reload()
+    }).catch((error) => console.error('检查 onboarding 失败', error));
 })();
 </script>
 
 <style>
-.ai-skills-grid {
+.agent-workbench {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
+    gap: 18px;
+    background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 32%),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(17, 34, 64, 0.88));
+    border: 1px solid rgba(125, 170, 255, 0.22);
+    box-shadow: 0 20px 60px rgba(2, 6, 23, 0.36);
 }
 
-.skill-card {
-    padding: 24px;
-    text-align: center;
-    transition: all 0.3s ease;
+.dashboard-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) 360px;
+    gap: 24px;
+}
+
+.hero-copy {
+    display: grid;
+    gap: 16px;
+}
+
+.hero-copy h1 {
+    margin: 0;
+    font-size: clamp(2.4rem, 5vw, 4.2rem);
+    line-height: 1.04;
+    color: #eef4ff;
+}
+
+.hero-subtitle,
+.hero-profile-text {
+    color: #c6d3ea;
+}
+
+.hero-profile-row,
+.agent-task-pills,
+.hero-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.hero-agent-box {
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(125, 170, 255, 0.22);
+    background: rgba(8, 15, 31, 0.62);
+}
+
+.hero-market-mini .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.market-mini-list {
+    display: grid;
+    gap: 10px;
+}
+
+.market-mini-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(15, 23, 42, 0.72);
+}
+
+.task-pill {
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    border-radius: 999px;
+    padding: 10px 14px;
+    background: rgba(37, 99, 235, 0.18);
+    color: #93c5fd;
     cursor: pointer;
+    font-weight: 700;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 
-.skill-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+.task-pill:hover {
+    border-color: rgba(125, 211, 252, 0.7);
+    background: rgba(14, 165, 233, 0.22);
+    color: #dbeafe;
 }
 
-.skill-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-}
-
-.skill-title {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0 0 12px 0;
-    color: #667eea;
-}
-
-.skill-desc {
-    font-size: 14px;
-    color: #666;
-    margin: 0 0 20px 0;
-    line-height: 1.6;
-}
-
-.skill-trigger {
+.home-agent-input {
     width: 100%;
-    padding: 10px 20px;
-    font-size: 14px;
+    min-height: 92px;
+    border-radius: 16px;
+    border: 1px solid rgba(125, 170, 255, 0.32);
+    padding: 14px;
+    background: rgba(8, 15, 31, 0.86);
+    color: #eef4ff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.skill-trigger:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+.home-agent-input::placeholder {
+    color: #aab8cf;
+    opacity: 1;
+}
+
+.home-agent-input:focus {
+    outline: none;
+    border-color: rgba(96, 165, 250, 0.9);
+    background: rgba(10, 18, 35, 0.98);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.agent-input-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.home-agent-result {
+    margin-top: 8px;
+}
+
+.home-agent-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    color: #eef4ff;
+}
+
+.home-agent-result-body {
+    display: grid;
+    gap: 12px;
+}
+
+.task-result-card header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.task-result-card h4 {
+    margin: 0;
+}
+
+.task-result-list {
+    margin: 10px 0;
+    padding-left: 18px;
+}
+
+.task-result-data {
+    display: grid;
+    gap: 10px;
+}
+
+.task-result-news p,
+.home-agent-intro p,
+.recommendation-meta,
+.section-header small {
+    color: #c6d3ea;
+}
+
+.task-result-card p,
+.task-result-news strong {
+    color: #e5edf9;
+}
+
+.refresh-recommendations-btn {
+    border: 1px solid rgba(96, 165, 250, 0.45);
+    background: rgba(37, 99, 235, 0.2);
+    color: #bfdbfe;
+    font-weight: 700;
+}
+
+.refresh-recommendations-btn:hover:not(:disabled) {
+    background: rgba(37, 99, 235, 0.32);
+    color: #eef6ff;
+}
+
+.refresh-recommendations-btn:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.task-result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+@media (max-width: 960px) {
+    .dashboard-hero {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 

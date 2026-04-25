@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     )
     TELEGRAM_BACKFILL_LIMIT: int = Field(default=500)
 
+    # ==================== Crypto 启动采集配置 ====================
+    AUTO_START_CRYPTO_CRAWLER: bool = Field(default=True)
+    CRYPTO_STARTUP_BACKFILL_LIMIT: int = Field(default=2000)
+    CRYPTO_BACKFILL_STALE_HOURS: int = Field(default=24)
+    CRYPTO_STARTUP_NLP_MODE: str = Field(default="keywords")
+    CRYPTO_REQUIRE_REDIS: bool = Field(default=True)
+
     # Telegram 代理配置
     TELEGRAM_PROXY_ENABLED: bool = Field(default=False)
     TELEGRAM_PROXY_TYPE: str = Field(default="http")

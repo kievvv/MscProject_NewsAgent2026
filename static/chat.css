@@ -113,8 +113,20 @@
 
 .chat-subtitle {
     font-size: 14px;
-    color: #888;
+    color: #94a3b8;
     margin: 0;
+}
+
+.chat-profile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.chat-profile-summary {
+    color: #cbd5e1;
+    font-size: 14px;
 }
 
 .chat-header-actions {
@@ -161,7 +173,7 @@
 
 .welcome-screen > p {
     font-size: 16px;
-    color: #666;
+    color: #94a3b8;
     margin: 0 0 40px 0;
 }
 
@@ -211,7 +223,7 @@
 
 .skill-card p {
     font-size: 13px;
-    color: #666;
+    color: #aebcd1;
     margin: 0;
 }
 
@@ -298,13 +310,139 @@
 }
 
 .chat-message.assistant .message-bubble {
-    background: rgba(102, 126, 234, 0.08);
-    border: 1px solid rgba(102, 126, 234, 0.15);
+    background: rgba(15, 23, 42, 0.82);
+    border: 1px solid rgba(99, 179, 255, 0.16);
 }
 
 .chat-message.user .message-bubble {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+}
+
+.assistant-result-stack,
+.result-news-list,
+.trace-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.task-result-card {
+    border: 1px solid rgba(99, 179, 255, 0.16);
+    background: rgba(11, 18, 32, 0.88);
+    border-radius: 14px;
+    padding: 14px 16px;
+}
+
+.task-result-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.task-result-top h4,
+.trace-panel h4 {
+    margin: 0;
+    font-size: 15px;
+}
+
+.task-result-summary,
+.result-news-item p,
+.trace-list p,
+.trace-list small,
+.message-status-text {
+    color: #cbd5e1;
+}
+
+.result-news-item {
+    display: grid;
+    gap: 6px;
+}
+
+.news-detail-btn {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #e2e8f0;
+    text-align: left;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.news-detail-btn:hover {
+    color: #93c5fd;
+}
+
+.message-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.message-process-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(99, 179, 255, 0.1);
+    color: #93c5fd;
+    font-size: 12px;
+}
+
+.trace-drawer {
+    margin-top: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    background: rgba(15, 23, 42, 0.7);
+}
+
+.trace-list {
+    padding-left: 18px;
+}
+
+.trace-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.market-inline-grid,
+.keyword-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.market-inline-item {
+    min-width: 110px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(30, 41, 59, 0.72);
+    border: 1px solid rgba(99, 179, 255, 0.12);
+}
+
+.market-inline-item strong,
+.market-inline-item span {
+    display: block;
+}
+
+.task-pill-link {
+    text-decoration: none;
+}
+
+.message-followups {
+    margin-top: 12px;
+}
+
+.message-status-text {
+    margin-top: 10px;
+    font-size: 14px;
 }
 
 .message-time {
@@ -484,6 +622,301 @@
     font-size: 13px;
 }
 
+.assistant-result-stack {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.task-result-card {
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 14px;
+}
+
+.task-result-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.task-result-top h4 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.task-result-summary {
+    margin: 0 0 10px;
+    color: #475569;
+}
+
+.task-result-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+.task-result-data {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.result-news-item {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.result-news-item p {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.task-result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.task-result-risk {
+    margin-top: 12px;
+}
+
+.task-result-risk > span {
+    display: inline-block;
+    margin-bottom: 6px;
+    color: #9a3412;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.assistant-brief {
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.message-followups {
+    margin-top: 10px;
+}
+
+.chat-page {
+    color: var(--text);
+}
+
+.chat-sidebar,
+.chat-header,
+.chat-input-area {
+    background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.1), transparent 36%),
+        rgba(10, 18, 34, 0.88);
+    border: 1px solid rgba(125, 170, 255, 0.18);
+}
+
+.sidebar-header h2,
+.chat-header-info h1,
+.welcome-screen h2,
+.welcome-skills h3,
+.welcome-examples h3,
+.skill-card h4,
+.conversation-item-title,
+.task-result-top h4,
+.skill-report-title {
+    color: #eef4ff;
+}
+
+.conversation-item {
+    color: #dbe7fb;
+}
+
+.conversation-item:hover {
+    background: rgba(59, 130, 246, 0.14);
+    border-color: rgba(96, 165, 250, 0.32);
+}
+
+.conversation-item.active {
+    background: rgba(99, 102, 241, 0.22);
+    border-color: rgba(129, 140, 248, 0.48);
+}
+
+.conversation-item-time,
+.conversation-item-placeholder,
+.chat-subtitle,
+.chat-profile-summary,
+.welcome-screen > p,
+.skill-card p,
+.message-time,
+.text-muted,
+.task-result-summary,
+.result-news-item p {
+    color: #aebdd3;
+}
+
+.skill-card,
+.example-query,
+.skill-report-card,
+.task-result-card,
+.result-news-item,
+.assistant-brief {
+    background: rgba(15, 23, 42, 0.82);
+    border-color: rgba(125, 170, 255, 0.2);
+    color: #dbe7fb;
+}
+
+.skill-card:hover,
+.example-query:hover {
+    background: rgba(30, 41, 59, 0.94);
+    border-color: rgba(96, 165, 250, 0.46);
+}
+
+.example-query {
+    color: #dbe7fb;
+}
+
+.chat-message.assistant .message-bubble {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: rgba(125, 170, 255, 0.22);
+    color: #e5edf9;
+}
+
+.skill-report-content,
+.task-result-list,
+.task-result-risk {
+    color: #dbe7fb;
+}
+
+.task-result-risk > span {
+    color: #fbbf24;
+}
+
+.chat-input {
+    background: rgba(8, 15, 31, 0.92);
+    border-color: rgba(125, 170, 255, 0.34);
+    color: #eef4ff;
+}
+
+.chat-input::placeholder {
+    color: #aab8cf;
+    opacity: 1;
+}
+
+.chat-input:focus {
+    border-color: rgba(96, 165, 250, 0.9);
+    background: rgba(10, 18, 35, 0.98);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.btn-secondary {
+    background: rgba(37, 99, 235, 0.16);
+    color: #bfdbfe;
+    border-color: rgba(96, 165, 250, 0.35);
+}
+
+.btn-secondary:hover {
+    background: rgba(37, 99, 235, 0.26);
+}
+
+.welcome-capabilities {
+    margin: 0 0 32px 0;
+}
+
+.capability-groups {
+    display: grid;
+    gap: 14px;
+}
+
+.capability-groups-chat {
+    text-align: left;
+}
+
+.capability-group {
+    border: 1px solid rgba(96, 165, 250, 0.18);
+    background: rgba(15, 23, 42, 0.55);
+    border-radius: 14px;
+    padding: 14px;
+}
+
+.capability-group h4 {
+    margin: 0 0 10px 0;
+    color: #e2e8f0;
+    font-size: 14px;
+}
+
+.capability-items {
+    display: grid;
+    gap: 10px;
+}
+
+.capability-item {
+    border: 1px solid rgba(129, 140, 248, 0.2);
+    background: rgba(30, 41, 59, 0.92);
+    border-radius: 12px;
+    padding: 12px 14px;
+    text-align: left;
+    color: #e2e8f0;
+    cursor: pointer;
+}
+
+.capability-item strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+.capability-item span,
+.capability-loading,
+.task-result-sources {
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.mission-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.mission-panel {
+    border-radius: 14px;
+    border: 1px solid rgba(129, 140, 248, 0.2);
+    background: rgba(15, 23, 42, 0.74);
+    padding: 14px;
+}
+
+.mission-panel h4 {
+    margin: 0 0 8px 0;
+    color: #f8fafc;
+    font-size: 14px;
+}
+
+.mission-panel p {
+    margin: 0 0 8px 0;
+    color: #cbd5e1;
+    font-size: 13px;
+}
+
+.mission-panel ul,
+.mission-panel ol {
+    margin: 0;
+    padding-left: 18px;
+    color: #e2e8f0;
+    font-size: 13px;
+}
+
+.mission-panel li + li {
+    margin-top: 6px;
+}
+
+.mission-panel-trace li span,
+.mission-panel-trace li p {
+    display: block;
+    color: #94a3b8;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .chat-page {
@@ -501,6 +934,10 @@
     }
 
     .example-queries {
+        grid-template-columns: 1fr;
+    }
+
+    .mission-panel-grid {
         grid-template-columns: 1fr;
     }
 

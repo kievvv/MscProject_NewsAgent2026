@@ -8,6 +8,7 @@ from src.crawlers.telegram.config import RedisConfig
 from src.crawlers.telegram.consumer import TelegramConsumer
 from src.data.repositories.news import NewsRepository
 from src.core.models import NewsSource
+from src.services.personalization_service import PersonalizationService
 
 
 class DummyTracker:
@@ -137,3 +138,28 @@ def test_dashboard_snapshot_survives_market_failures(monkeypatch):
     assert snapshot["crypto_latest"]
     assert snapshot["fear_greed"]["classification"] == "数据不可用"
     assert snapshot["crypto_market_board"]["coins"] == []
+
+
+def test_recommendations_fall_back_to_historical_news(monkeypatch, tmp_path):
+    crypto_db = tmp_path / "historical_recommendations.db"
+    monkeypatch.setattr(settings, "CRYPTO_DB_PATH", str(crypto_db), raising=False)
+
+    repo = NewsRepository(source=NewsSource.CRYPTO)
+    repo.create(
+        content="Bitcoin ETF and AI infrastructure updates remain relevant.",
+        channel_id="@demo",
+        message_id="2001",
+        keywords="BTC,ETF,AI",
+        date="2020-01-01T10:00:00+00:00",
+    )
+
+    service = PersonalizationService()
+    results, status = service.recommend_news_with_status(
+        preferences={"focus_assets": ["BTC"], "focus_themes": ["AI", "ETF"]},
+        limit=4,
+        source=NewsSource.CRYPTO,
+    )
+
+    assert len(results) == 1
+    assert status["mode"] == "historical_fallback"
+    assert results[0]["recommendation_reasons"]

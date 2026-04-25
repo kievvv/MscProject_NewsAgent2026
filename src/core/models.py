@@ -348,6 +348,83 @@ class UserProfile:
 
 
 @dataclass
+class TaskIntent:
+    """任务意图模型"""
+    task_type: str = "chat"
+    time_window: str = "24h"
+    focus_assets: List[str] = field(default_factory=list)
+    focus_themes: List[str] = field(default_factory=list)
+    risk_mode: Optional[str] = None
+    output_format: str = "brief"
+    query: Optional[str] = None
+    topic: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'task_type': self.task_type,
+            'time_window': self.time_window,
+            'focus_assets': self.focus_assets,
+            'focus_themes': self.focus_themes,
+            'risk_mode': self.risk_mode,
+            'output_format': self.output_format,
+            'query': self.query,
+            'topic': self.topic,
+        }
+
+
+@dataclass
+class AgentResultBlock:
+    """Agent结构化结果块"""
+    block_type: str
+    title: str
+    summary: str
+    data: Any = None
+    key_points: List[str] = field(default_factory=list)
+    risk_notes: List[str] = field(default_factory=list)
+    next_actions: List[str] = field(default_factory=list)
+    evidence_news_ids: List[int] = field(default_factory=list)
+    source_labels: List[str] = field(default_factory=list)
+    tool_trace_refs: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'block_type': self.block_type,
+            'title': self.title,
+            'summary': self.summary,
+            'data': self.data,
+            'key_points': self.key_points,
+            'risk_notes': self.risk_notes,
+            'next_actions': self.next_actions,
+            'evidence_news_ids': self.evidence_news_ids,
+            'source_labels': self.source_labels,
+            'tool_trace_refs': self.tool_trace_refs,
+        }
+
+
+@dataclass
+class PersonalizedReport:
+    """个性化报告结构"""
+    title: str
+    summary: str
+    key_points: List[str] = field(default_factory=list)
+    risk_notes: List[str] = field(default_factory=list)
+    next_actions: List[str] = field(default_factory=list)
+    evidence_news_ids: List[int] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'title': self.title,
+            'summary': self.summary,
+            'key_points': self.key_points,
+            'risk_notes': self.risk_notes,
+            'next_actions': self.next_actions,
+            'evidence_news_ids': self.evidence_news_ids,
+            'metadata': self.metadata,
+        }
+
+
+@dataclass
 class AgentSkill:
     """Agent技能模型"""
     id: Optional[int] = None

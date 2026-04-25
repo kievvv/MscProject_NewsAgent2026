@@ -77,10 +77,11 @@ class AlphaHunterSkill(BaseSkill):
             elif step.tool_name == "market_screening":
                 # 获取市场数据
                 market_result = self.market_tool.execute(limit=20)
-                if market_result.success and market_result.data:
+                coins = market_result.data.get('coins', []) if market_result.success and isinstance(market_result.data, dict) else []
+                if coins:
                     # 筛选：24h涨跌在±5%以内的（波动不大的）
                     screened = []
-                    for coin in market_result.data:
+                    for coin in coins:
                         change = coin.get('price_change_24h', 0)
                         if -5 <= change <= 5:
                             screened.append(coin)
@@ -228,3 +229,31 @@ class AlphaHunterSkill(BaseSkill):
         report += "*本报告由AI自动生成，仅供参考*\n"
 
         return report
+
+    def build_structured_output(self, steps: List[SkillStep], report: str) -> Dict[str, Any]:
+        opportunities = steps[3].result if len(steps) > 3 and steps[3].result else []
+        keywords = steps[0].result if steps and steps[0].result else []
+        return {
+            "title": "Opportunity Radar",
+            "summary": f"系统已完成 Alpha 机会扫描，当前识别到 {len(opportunities)} 个候选机会。",
+            "key_points": [
+                f"扫描到 {len(keywords)} 个新兴关键词",
+                f"输出 {len(opportunities)} 个潜在机会候选",
+            ],
+            "evidence_news_ids": [],
+            "risk_notes": [
+                "该结果更偏机会发现，不等于可直接执行的交易信号。",
+                "建议结合主题深挖与更多市场因子验证。"
+            ],
+            "next_actions": [
+                "深挖其中一个机会对应的主题",
+                "将机会候选加入观察列表"
+            ],
+            "tool_trace_refs": [step.tool_name for step in steps if step.tool_name],
+            "sections": {
+                "emerging_keywords": keywords,
+                "market_screening": steps[1].result if len(steps) > 1 else [],
+                "correlations": steps[2].result if len(steps) > 2 else [],
+                "opportunities": opportunities,
+            }
+        }
