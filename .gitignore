@@ -44,6 +44,7 @@ ENV/
 # Package/tool caches
 .uv-cache/
 .cache/
+.git-backups/
 
 # Environment files
 .env
